@@ -79,19 +79,19 @@ class Waze {
     /** For the page: { text, up, ok } (ok: false when something is wrong). */
     info() {
         const s = this.st;
-        if (!s) return { text: 'Waze on Cluster isn\'t running', up: false, ok: false };
-        if (s.state === 'unsupported') return { text: 'Waze on Cluster: this car isn\'t supported', up: false, ok: false };
-        if (s.state === 'off') return { text: 'Waze map is turned off in the Waze app', up: false, ok: false };
-        if (!this.wanted) return { text: 'Off. Waze shows the map in BMW\'s own map view', up: false, ok: true };
+        if (!s) return { text: 'Waze on Cluster läuft nicht', up: false, ok: false };
+        if (s.state === 'unsupported') return { text: 'Waze on Cluster: dieses Auto wird nicht unterstützt', up: false, ok: false };
+        if (s.state === 'off') return { text: 'Die Waze-Karte ist in der Waze-App ausgeschaltet', up: false, ok: false };
+        if (!this.wanted) return { text: 'Aus. Waze zeigt die Karte in BMWs eigener Kartenansicht', up: false, ok: true };
         if (s.target !== 'panel') {
-            if (this.problem === 'busy') return { text: 'Waze app is open, retrying', up: false, ok: false };
-            if (this.problem) return { text: 'Can\'t reach Waze on Cluster (' + this.problem + ')', up: false, ok: false };
-            return { text: 'Moving the map into the theme', up: false, ok: true };
+            if (this.problem === 'busy') return { text: 'Waze-App ist offen, neuer Versuch', up: false, ok: false };
+            if (this.problem) return { text: 'Waze on Cluster nicht erreichbar (' + this.problem + ')', up: false, ok: false };
+            return { text: 'Verschiebe die Karte ins Theme', up: false, ok: true };
         }
-        if (s.state === 'showing') return { text: 'Map showing in the theme', up: true, ok: true };
-        if (s.state === 'frozen') return { text: 'Map frozen, waiting for the phone', up: false, ok: false };
-        if (s.state === 'error') return { text: 'Waze on Cluster reports an error', up: false, ok: false };
-        return { text: 'Waiting for the map', up: false, ok: true };
+        if (s.state === 'showing') return { text: 'Karte wird im Theme angezeigt', up: true, ok: true };
+        if (s.state === 'frozen') return { text: 'Karte eingefroren, warte auf das Handy', up: false, ok: false };
+        if (s.state === 'error') return { text: 'Waze on Cluster meldet einen Fehler', up: false, ok: false };
+        return { text: 'Warte auf die Karte', up: false, ok: true };
     }
 
     _poll() {

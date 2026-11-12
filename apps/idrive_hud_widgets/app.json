@@ -1,7 +1,7 @@
 {
   "id": "idrive_hud_widgets",
   "title": "HUD Widgets",
-  "description": "Gear, shift lights, boost, oil, coolant and intake temperatures, a G-meter and trip figures on the windshield HUD, in Classic, M or Night themes",
+  "description": "Gang, Schaltblitz, Ladedruck, Öl-, Kühlmittel- und Ansauglufttemperatur, G-Meter und Fahrtwerte im Head-up-Display, in den Themes Classic, M oder Night",
   "version": "0.12.6",
   "vendor": "custom",
   "loggingId": "OAH1",
@@ -73,7 +73,7 @@
       "buttons": [
         [
           "BTN_SETTINGS",
-          "All settings"
+          "Alle Einstellungen"
         ]
       ]
     }
@@ -81,13 +81,13 @@
   "settings": [
     {
       "key": "hudLayout",
-      "label": "Layout (when not by drive mode)",
+      "label": "Layout (wenn nicht nach Fahrmodus)",
       "type": "choice",
       "default": "daily",
       "options": [
         [
           "off",
-          "Off (BMW's own HUD)"
+          "Aus (BMW-HUD original)"
         ],
         [
           "daily",
@@ -107,7 +107,7 @@
         ],
         [
           "shiftonly",
-          "Shift only"
+          "Nur Schaltblitz"
         ],
         [
           "boost",
@@ -115,7 +115,7 @@
         ],
         [
           "warmup",
-          "Warm-up"
+          "Warmfahren"
         ],
         [
           "track",
@@ -131,29 +131,29 @@
         ],
         [
           "grid",
-          "Calibration grid"
+          "Kalibrierraster"
         ],
         [
           "wincal",
-          "Window calibration"
+          "Fenster-Kalibrierung"
         ]
       ]
     },
     {
       "key": "byMode",
-      "label": "Change with SPORT / COMFORT / ECO PRO",
+      "label": "Mit SPORT / COMFORT / ECO PRO wechseln",
       "type": "bool",
       "default": true
     },
     {
       "key": "inComfort",
-      "label": "In Comfort (Daily by default; BMW keeps its speed bottom-left)",
+      "label": "In Comfort (Standard: Daily; BMW behält sein Tempo unten links)",
       "type": "choice",
       "default": "daily",
       "options": [
         [
           "off",
-          "Off (BMW's own HUD)"
+          "Aus (BMW-HUD original)"
         ],
         [
           "daily",
@@ -173,7 +173,7 @@
         ],
         [
           "shiftonly",
-          "Shift only"
+          "Nur Schaltblitz"
         ],
         [
           "boost",
@@ -181,7 +181,7 @@
         ],
         [
           "warmup",
-          "Warm-up"
+          "Warmfahren"
         ],
         [
           "track",
@@ -199,13 +199,13 @@
     },
     {
       "key": "inSport",
-      "label": "In Sport (off by default: BMW's Sport HUD takes the middle)",
+      "label": "In Sport (Standard: aus; BMWs Sport-HUD nutzt die Mitte)",
       "type": "choice",
       "default": "off",
       "options": [
         [
           "off",
-          "Off (BMW's own HUD)"
+          "Aus (BMW-HUD original)"
         ],
         [
           "daily",
@@ -225,7 +225,7 @@
         ],
         [
           "shiftonly",
-          "Shift only"
+          "Nur Schaltblitz"
         ],
         [
           "boost",
@@ -233,7 +233,7 @@
         ],
         [
           "warmup",
-          "Warm-up"
+          "Warmfahren"
         ],
         [
           "track",
@@ -251,13 +251,13 @@
     },
     {
       "key": "inEco",
-      "label": "In Eco Pro (off by default: BMW's own HUD)",
+      "label": "In Eco Pro (Standard: aus; BMW-HUD original)",
       "type": "choice",
       "default": "off",
       "options": [
         [
           "off",
-          "Off (BMW's own HUD)"
+          "Aus (BMW-HUD original)"
         ],
         [
           "daily",
@@ -277,7 +277,7 @@
         ],
         [
           "shiftonly",
-          "Shift only"
+          "Nur Schaltblitz"
         ],
         [
           "boost",
@@ -285,7 +285,7 @@
         ],
         [
           "warmup",
-          "Warm-up"
+          "Warmfahren"
         ],
         [
           "track",
@@ -309,7 +309,7 @@
       "options": [
         [
           "auto",
-          "Auto (Night after sunset)"
+          "Auto (Night nach Sonnenuntergang)"
         ],
         [
           "classic",
@@ -327,7 +327,7 @@
     },
     {
       "key": "dayTheme",
-      "label": "Daytime theme for Auto",
+      "label": "Tages-Theme für Auto",
       "type": "choice",
       "default": "classic",
       "options": [
@@ -343,7 +343,7 @@
     },
     {
       "key": "hudX",
-      "label": "HUD position, left / right",
+      "label": "HUD-Position, links / rechts",
       "type": "number",
       "unit": "px",
       "default": 0,
@@ -394,7 +394,7 @@
     },
     {
       "key": "hudY",
-      "label": "HUD position, up / down",
+      "label": "HUD-Position, hoch / runter",
       "type": "number",
       "unit": "px",
       "default": 0,
@@ -435,7 +435,7 @@
     },
     {
       "key": "hudScale",
-      "label": "HUD size",
+      "label": "HUD-Größe",
       "type": "number",
       "unit": "%",
       "default": 100,
@@ -454,9 +454,9 @@
     },
     {
       "key": "units",
-      "label": "Units",
+      "label": "Einheiten",
       "type": "choice",
-      "default": "us",
+      "default": "metric",
       "options": [
         [
           "us",
@@ -470,25 +470,25 @@
     },
     {
       "key": "clock",
-      "label": "Clock",
+      "label": "Uhr",
       "type": "choice",
-      "default": "12h",
+      "default": "24h",
       "options": [
         [
           "12h",
-          "12-hour"
+          "12 Stunden"
         ],
         [
           "24h",
-          "24-hour"
+          "24 Stunden"
         ]
       ]
     },
     {
       "key": "timeZone",
-      "label": "Time zone (clock)",
+      "label": "Zeitzone (Uhr)",
       "type": "number",
-      "default": -9999,
+      "default": 10012,
       "steps": [
         -9999,
         10001,
@@ -560,7 +560,7 @@
     },
     {
       "key": "tankLitres",
-      "label": "Fuel tank size",
+      "label": "Tankgröße",
       "type": "number",
       "unit": "L",
       "default": 65,
@@ -650,7 +650,7 @@
     },
     {
       "key": "redline",
-      "label": "Redline (shift light)",
+      "label": "Roter Bereich (Schaltblitz)",
       "type": "number",
       "unit": "rpm",
       "default": 7000,
@@ -664,7 +664,7 @@
     },
     {
       "key": "shiftBefore",
-      "label": "Shift point before redline",
+      "label": "Schaltpunkt vor dem roten Bereich",
       "type": "number",
       "unit": "rpm",
       "default": 300,
@@ -680,37 +680,37 @@
     },
     {
       "key": "coldGuard",
-      "label": "Cold-engine rev guard (Redline)",
+      "label": "Drehzahlschutz bei kaltem Motor (Redline)",
       "type": "bool",
       "default": true
     },
     {
       "key": "showClock",
-      "label": "Show clock",
+      "label": "Uhr anzeigen",
       "type": "bool",
       "default": true
     },
     {
       "key": "showOil",
-      "label": "Show oil temperature",
+      "label": "Öltemperatur anzeigen",
       "type": "bool",
       "default": true
     },
     {
       "key": "showCoolant",
-      "label": "Show coolant temperature",
+      "label": "Kühlmitteltemperatur anzeigen",
       "type": "bool",
       "default": true
     },
     {
       "key": "showBoost",
-      "label": "Show boost (Sport layout)",
+      "label": "Ladedruck anzeigen (Layout Sport)",
       "type": "bool",
       "default": true
     },
     {
       "key": "warnOil",
-      "label": "Oil temperature warning",
+      "label": "Öltemperatur-Warnung",
       "type": "number",
       "unit": "°C",
       "default": 130,
@@ -729,7 +729,7 @@
     },
     {
       "key": "warnCoolant",
-      "label": "Coolant temperature warning",
+      "label": "Kühlmitteltemperatur-Warnung",
       "type": "number",
       "unit": "°C",
       "default": 115,
@@ -745,7 +745,7 @@
     },
     {
       "key": "warnBoost",
-      "label": "Boost warning",
+      "label": "Ladedruck-Warnung",
       "type": "number",
       "unit": "bar",
       "default": 0,
@@ -762,19 +762,19 @@
     },
     {
       "key": "gFlipLat",
-      "label": "G-meter: swap left / right",
+      "label": "G-Meter: links / rechts tauschen",
       "type": "bool",
       "default": false
     },
     {
       "key": "gFlipLong",
-      "label": "G-meter: brake on top",
+      "label": "G-Meter: Bremse oben",
       "type": "bool",
       "default": false
     },
     {
       "key": "gRange",
-      "label": "G-meter range",
+      "label": "G-Meter-Bereich",
       "type": "choice",
       "default": 1.2,
       "options": [
@@ -802,13 +802,13 @@
     },
     {
       "key": "gTrail",
-      "label": "G-meter trail",
+      "label": "G-Meter-Spur",
       "type": "choice",
       "default": 2,
       "options": [
         [
           0,
-          "Off"
+          "Aus"
         ],
         [
           1,
@@ -826,21 +826,21 @@
     },
     {
       "key": "demo",
-      "label": "Demo data",
+      "label": "Demodaten",
       "type": "choice",
       "default": "auto",
       "options": [
         [
           "auto",
-          "Auto (until the car sends data)"
+          "Auto (bis das Auto Daten sendet)"
         ],
         [
           "on",
-          "On"
+          "An"
         ],
         [
           "off",
-          "Off"
+          "Aus"
         ]
       ]
     }

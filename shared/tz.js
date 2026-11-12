@@ -18,11 +18,11 @@ const ZONES = {
     10005: ['US Pacific', -480, 'us', [40, -120]],
     10006: ['Alaska', -540, 'us', [62, -150]],
     10007: ['Hawaii', -600, null, [20.5, -157]],
-    10008: ['Canada Atlantic', -240, 'us', [46, -64]],
-    10009: ['Mexico', -360, null, [21, -101]],
-    10011: ['UK, Ireland, Portugal', 0, 'eu', [52, -4]],
-    10012: ['Central Europe', 60, 'eu', [48, 10]],
-    10013: ['Eastern Europe', 120, 'eu', [46, 25]],
+    10008: ['Kanada Atlantik', -240, 'us', [46, -64]],
+    10009: ['Mexiko', -360, null, [21, -101]],
+    10011: ['UK, Irland, Portugal', 0, 'eu', [52, -4]],
+    10012: ['Mitteleuropa', 60, 'eu', [48, 10]],
+    10013: ['Osteuropa', 120, 'eu', [46, 25]],
 };
 // no zone set (Automatic): the middle of the contiguous US, where most of the apps' users are
 const FALLBACK = { lat: 39.8, lon: -98.6 };
@@ -69,7 +69,7 @@ function offset(v, t) {
 
 /** The setting value as the settings row shows it. */
 function name(v) {
-    if (v === AUTO || typeof v !== 'number') return 'Automatic';
+    if (v === AUTO || typeof v !== 'number') return 'Automatisch';
     if (ZONES[v]) return ZONES[v][0];
     if (v === 0) return 'UTC';
     const a = Math.abs(v), h = Math.floor(a / 60), m = a % 60;

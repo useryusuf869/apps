@@ -11,39 +11,39 @@
  * hud.js token, the value; digits, '.', ':' and '-' only, so it fits every value font), unit(us) (upper case).
  * Plain Node 8 (the car's 8.16.2).
  */
-const CATS = ['Engine', 'Temps', 'Chassis', 'Fuel', 'Tyres', 'Drive'];
+const CATS = ['Motor', 'Temp.', 'Fahrwerk', 'Kraftstoff', 'Reifen', 'Fahrt'];
 const T = (us) => (us ? '°F' : '°C');
 const P = (us) => (us ? 'PSI' : 'BAR');
 
 const LIST = [
-    { id: 'rpm', name: 'Engine speed', cat: 'Engine', head: 'RPM', tok: 'rpm', unit: () => '' },
-    { id: 'boost', name: 'Boost', cat: 'Engine', head: 'BOOST', tok: 'boost', unit: P },
-    { id: 'torque', name: 'Engine torque', cat: 'Engine', head: 'TORQUE', tok: 'torque', unit: (us) => (us ? 'LB-FT' : 'NM') },
-    { id: 'power', name: 'Power', cat: 'Engine', head: 'POWER', tok: 'power', unit: (us) => (us ? 'HP' : 'KW') },
-    { id: 'torquePct', name: 'Torque, % of max', cat: 'Engine', head: 'TORQUE', tok: 'torquePct', unit: () => '%' },
-    { id: 'powerPct', name: 'Power, % of max', cat: 'Engine', head: 'POWER', tok: 'powerPct', unit: () => '%' },
-    { id: 'oil', name: 'Oil temperature', cat: 'Temps', head: 'OIL', tok: 'oil', unit: T, suffix: '°' },
-    { id: 'coolant', name: 'Coolant temperature', cat: 'Temps', head: 'COOLANT', tok: 'coolant', unit: T, suffix: '°' },
-    { id: 'intake', name: 'Intake air temperature', cat: 'Temps', head: 'INTAKE', tok: 'intake', unit: T, suffix: '°' },
-    { id: 'ambient', name: 'Outside temperature', cat: 'Temps', head: 'OUTSIDE', tok: 'ambientN', unit: T, suffix: '°' },
-    { id: 'speed', name: 'Speed', cat: 'Chassis', head: 'SPEED', tok: 'speed', unit: (us) => (us ? 'MPH' : 'KM/H') },
-    { id: 'gLat', name: 'Cornering g', cat: 'Chassis', head: 'LAT G', tok: 'gLat', unit: () => 'G' },
-    { id: 'gLong', name: 'Braking / accel g', cat: 'Chassis', head: 'LONG G', tok: 'gLong', unit: () => 'G' },
-    { id: 'fuel', name: 'Fuel level', cat: 'Fuel', head: 'FUEL', tok: 'fuelPct', unit: () => '%' },
-    { id: 'range', name: 'Range', cat: 'Fuel', head: 'RANGE', tok: 'range', unit: (us) => (us ? 'MI' : 'KM') },
+    { id: 'rpm', name: 'Motordrehzahl', cat: 'Motor', head: 'RPM', tok: 'rpm', unit: () => '' },
+    { id: 'boost', name: 'Ladedruck', cat: 'Motor', head: 'BOOST', tok: 'boost', unit: P },
+    { id: 'torque', name: 'Motordrehmoment', cat: 'Motor', head: 'TORQUE', tok: 'torque', unit: (us) => (us ? 'LB-FT' : 'NM') },
+    { id: 'power', name: 'Leistung', cat: 'Motor', head: 'POWER', tok: 'power', unit: (us) => (us ? 'HP' : 'KW') },
+    { id: 'torquePct', name: 'Drehmoment, % vom Maximum', cat: 'Motor', head: 'TORQUE', tok: 'torquePct', unit: () => '%' },
+    { id: 'powerPct', name: 'Leistung, % vom Maximum', cat: 'Motor', head: 'POWER', tok: 'powerPct', unit: () => '%' },
+    { id: 'oil', name: 'Öltemperatur', cat: 'Temp.', head: 'OIL', tok: 'oil', unit: T, suffix: '°' },
+    { id: 'coolant', name: 'Kühlmitteltemperatur', cat: 'Temp.', head: 'COOLANT', tok: 'coolant', unit: T, suffix: '°' },
+    { id: 'intake', name: 'Ansauglufttemperatur', cat: 'Temp.', head: 'INTAKE', tok: 'intake', unit: T, suffix: '°' },
+    { id: 'ambient', name: 'Außentemperatur', cat: 'Temp.', head: 'OUTSIDE', tok: 'ambientN', unit: T, suffix: '°' },
+    { id: 'speed', name: 'Geschwindigkeit', cat: 'Fahrwerk', head: 'SPEED', tok: 'speed', unit: (us) => (us ? 'MPH' : 'KM/H') },
+    { id: 'gLat', name: 'Querbeschleunigung (g)', cat: 'Fahrwerk', head: 'LAT G', tok: 'gLat', unit: () => 'G' },
+    { id: 'gLong', name: 'Bremsen / Beschleunigen (g)', cat: 'Fahrwerk', head: 'LONG G', tok: 'gLong', unit: () => 'G' },
+    { id: 'fuel', name: 'Tankfüllstand', cat: 'Kraftstoff', head: 'FUEL', tok: 'fuelPct', unit: () => '%' },
+    { id: 'range', name: 'Reichweite', cat: 'Kraftstoff', head: 'RANGE', tok: 'range', unit: (us) => (us ? 'MI' : 'KM') },
     // plug-in hybrids (330e, X5 45e ...): the high-voltage battery's charge, read from its battery unit (hud.js HV_SOC)
-    { id: 'hvSoc', name: 'Hybrid battery (plug-in hybrids)', cat: 'Fuel', head: 'BATTERY', tok: 'hvSoc', unit: () => '%' },
-    { id: 'tyrePFL', name: 'Tyre pressure, front left', cat: 'Tyres', head: 'FL', tok: 'tyreP:FL', unit: P },
-    { id: 'tyrePFR', name: 'Tyre pressure, front right', cat: 'Tyres', head: 'FR', tok: 'tyreP:FR', unit: P },
-    { id: 'tyrePRL', name: 'Tyre pressure, rear left', cat: 'Tyres', head: 'RL', tok: 'tyreP:RL', unit: P },
-    { id: 'tyrePRR', name: 'Tyre pressure, rear right', cat: 'Tyres', head: 'RR', tok: 'tyreP:RR', unit: P },
-    { id: 'tyreTFL', name: 'Tyre temperature, front left', cat: 'Tyres', head: 'FL', tok: 'tyreT:FL', unit: T, suffix: '°' },
-    { id: 'tyreTFR', name: 'Tyre temperature, front right', cat: 'Tyres', head: 'FR', tok: 'tyreT:FR', unit: T, suffix: '°' },
-    { id: 'tyreTRL', name: 'Tyre temperature, rear left', cat: 'Tyres', head: 'RL', tok: 'tyreT:RL', unit: T, suffix: '°' },
-    { id: 'tyreTRR', name: 'Tyre temperature, rear right', cat: 'Tyres', head: 'RR', tok: 'tyreT:RR', unit: T, suffix: '°' },
-    { id: 'shiftAt', name: 'Shift point', cat: 'Drive', head: 'SHIFT AT', tok: 'shiftAt', unit: () => '' },
-    { id: 'lastShift', name: 'Last shift', cat: 'Drive', head: 'LAST SHIFT', tok: 'lastShift', unit: () => '' },
-    { id: 'time', name: 'Clock', cat: 'Drive', head: 'TIME', tok: 'time', unit: null },
+    { id: 'hvSoc', name: 'Hybridbatterie (Plug-in-Hybride)', cat: 'Kraftstoff', head: 'BATTERY', tok: 'hvSoc', unit: () => '%' },
+    { id: 'tyrePFL', name: 'Reifendruck, vorn links', cat: 'Reifen', head: 'FL', tok: 'tyreP:FL', unit: P },
+    { id: 'tyrePFR', name: 'Reifendruck, vorn rechts', cat: 'Reifen', head: 'FR', tok: 'tyreP:FR', unit: P },
+    { id: 'tyrePRL', name: 'Reifendruck, hinten links', cat: 'Reifen', head: 'RL', tok: 'tyreP:RL', unit: P },
+    { id: 'tyrePRR', name: 'Reifendruck, hinten rechts', cat: 'Reifen', head: 'RR', tok: 'tyreP:RR', unit: P },
+    { id: 'tyreTFL', name: 'Reifentemperatur, vorn links', cat: 'Reifen', head: 'FL', tok: 'tyreT:FL', unit: T, suffix: '°' },
+    { id: 'tyreTFR', name: 'Reifentemperatur, vorn rechts', cat: 'Reifen', head: 'FR', tok: 'tyreT:FR', unit: T, suffix: '°' },
+    { id: 'tyreTRL', name: 'Reifentemperatur, hinten links', cat: 'Reifen', head: 'RL', tok: 'tyreT:RL', unit: T, suffix: '°' },
+    { id: 'tyreTRR', name: 'Reifentemperatur, hinten rechts', cat: 'Reifen', head: 'RR', tok: 'tyreT:RR', unit: T, suffix: '°' },
+    { id: 'shiftAt', name: 'Schaltpunkt', cat: 'Fahrt', head: 'SHIFT AT', tok: 'shiftAt', unit: () => '' },
+    { id: 'lastShift', name: 'Letzter Gangwechsel', cat: 'Fahrt', head: 'LAST SHIFT', tok: 'lastShift', unit: () => '' },
+    { id: 'time', name: 'Uhr', cat: 'Fahrt', head: 'TIME', tok: 'time', unit: null },
 ];
 const BY_ID = {};
 LIST.forEach((s) => { BY_ID[s.id] = s; });

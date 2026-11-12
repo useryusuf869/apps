@@ -29,6 +29,8 @@ function get(name, size, text) {
     // Shared supplemental atlases avoid duplicating glyphs in every numeric size.
     if (text && /[\u3000-\u9fff\uff00-\uffef]/.test(text)) name = 'cjk';
     else if (text && /[\u0400-\u04ff]/.test(text)) name = 'cyrillic';
+    // German umlauts and sharp s: the label atlases are ASCII, these come from the Latin atlas (fonts/latin.json)
+    else if (text && /[\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f]/.test(text) && family('latin')) name = 'latin';
     const fam = family(name) || family('label');
     if (!fam) return null;
     let best = null;
