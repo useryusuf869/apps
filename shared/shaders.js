@@ -1279,12 +1279,28 @@ void main() {
 }
 `;
 
-const LAMBO = `// The Lambo theme's backdrop in one cluster-render "effect" layer (GLSL ES 1.00): a dark carbon honeycomb, a
-// glowing rail along the hood line on both sides (the left one, mirrored for the right) and up to 12 angled glass
-// panels with a bright edge. v_uv is 0..1 across the layer, (0,0) at the top-left. Uniforms from hud.js:
-//   u_size   layer size (w, h)      u_n  panels in use      u_p[i]  panel x, y, w, h      u_c[i]  its cut corners
-//   (top-left, top-right, bottom-right, bottom-left, px)    u_rn  rail segments     u_rs[i]  segment x1, y1, x2, y2
-//   u_bg  base   u_hex  honeycomb lines   u_panel  panel glass   u_line  panel edge and rail   u_glow  the glow round them
+// The panels of the Lambo backdrop: up to 4 polygons, one with up to 16 corners each (16, 16, 8, 8), as edges in u_e.
+const LAMBO_PANELS = [16, 16, 8, 8];
+function lamboSource() {
+    let off = 0, fn = '';
+    LAMBO_PANELS.forEach((n, k) => {
+        fn += 'float poly' + k + '(vec2 p) {\n    float d = 1.0e4; float s = 1.0;\n';
+        for (let i = 0; i < n; i++) {
+            const e = 'u_e[' + (off + i) + ']';
+            fn += '    if (' + i + '.0 < u_n[' + k + ']) { vec2 a = ' + e + '.xy, b = ' + e + '.zw; d = min(d, segd(p, a, b));' +
+                ' if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) s = -s; }\n';
+        }
+        fn += '    return d * s;\n}\n';
+        off += n;
+    });
+    return `// The Lambo theme's backdrop in one cluster-render "effect" layer (GLSL ES 1.00): a dark carbon honeycomb, two glowing
+// rails along the hood line, four glass panels (polygons, so one edge can follow the rev arc), a grey band behind the
+// gear row and a small blue dome. v_uv is 0..1 across the layer, (0,0) at the top-left. Uniforms from hud.js:
+//   u_size  layer size (w, h)    u_n  corners of each of the 4 panels    u_e  their edges (x1, y1, x2, y2), 16 + 16 + 8 + 8
+//   u_rn  segments in the rails   u_rs  their segments (the left and right rail, one list)
+//   u_logo  x, y, w, h of the three slanted M stripes (w 0: none)
+//   u_band  x, y, w, h of the grey band    u_dome  centre x, y and radii x, y of the blue dome (upper half)
+//   u_bg  base   u_hex  honeycomb lines   u_panel  glass   u_line  panel edge and rails   u_glow  glow round them   u_blue  the dome
 // Output is opaque (alpha 1): the layer replaces BMW's gauges under it, like the fill widget.
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -1293,74 +1309,173 @@ precision mediump float;
 #endif
 varying vec2 v_uv;
 uniform vec2 u_size;
-uniform float u_n;
-uniform vec4 u_p[12];
-uniform vec4 u_c[12];
+uniform vec4 u_n;
+uniform vec4 u_e[48];
 uniform float u_rn;
-uniform vec4 u_rs[16];
+uniform vec4 u_rs[40];
+uniform vec4 u_band;
+uniform vec4 u_dome;
+uniform vec4 u_logo;
 uniform vec3 u_bg;
 uniform vec3 u_hex;
 uniform vec3 u_panel;
 uniform vec3 u_line;
 uniform vec3 u_glow;
+uniform vec3 u_blue;
 
 float segd(vec2 p, vec2 a, vec2 b) {
     vec2 pa = p - a, ba = b - a;
     float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
     return length(pa - ba * h);
 }
-// signed distance (px, negative inside) to a rectangle with its corners cut at 45 degrees
-float chamfer(vec2 p, vec4 r, vec4 c) {
-    vec2 q = p - r.xy;
-    float d = max(max(-q.x, q.x - r.z), max(-q.y, q.y - r.w));
-    float k = 0.70710678;
-    d = max(d, (c.x - q.x - q.y) * k);
-    d = max(d, (c.y - (r.z - q.x) - q.y) * k);
-    d = max(d, (c.z - (r.z - q.x) - (r.w - q.y)) * k);
-    d = max(d, (c.w - q.x - (r.w - q.y)) * k);
-    return d;
-}
-// distance to the nearest edge of the honeycomb cell holding p (cell about 1.0 wide, as in the usual hex-grid trick)
+// distance to the nearest edge of the flat-top honeycomb cell holding p (cell about 1.0 high)
 float hexEdge(vec2 p) {
+    p = p.yx;
     vec2 r = vec2(1.0, 1.7320508), h = r * 0.5;
     vec2 a = mod(p, r) - h, b = mod(p - h, r) - h;
-    vec2 g = dot(a, a) < dot(b, b) ? a : b;
-    g = abs(g);
-    return 0.5 - max(dot(g, vec2(0.8660254, 0.5)), g.y);
+    vec2 g = abs(dot(a, a) < dot(b, b) ? a : b);
+    return 0.5 - max(dot(g, vec2(0.5, 0.8660254)), g.x);
 }
-
+${fn}
 void main() {
-    vec2 p = vec2(v_uv.x, v_uv.y) * u_size;
+    vec2 p = v_uv * u_size;
     vec2 c = p / u_size - 0.5;
-    vec3 col = u_bg * (1.18 - 0.9 * dot(c, c));
-    float e = hexEdge(p / 30.0);
-    float line = 1.0 - smoothstep(0.0, 0.05, e);
-    col += u_hex * line * (0.55 - 0.7 * dot(c, c));
+    vec3 col = u_bg * (1.25 - 1.1 * dot(c, c));
+    float e = hexEdge(p / 46.0);
+    float line = 1.0 - smoothstep(0.0, 0.035, e);
+    col += u_hex * line * (0.38 - 0.4 * dot(c, c));
 
-    // the rail along the hood, both sides
-    vec2 pm = vec2(u_size.x - p.x, p.y);
+    // the grey band behind the gear row, fading out at both ends
+    vec2 q = (p - u_band.xy) / u_band.zw;
+    float bx = smoothstep(0.0, 0.12, q.x) * (1.0 - smoothstep(0.88, 1.0, q.x));
+    float by = step(0.0, q.y) * step(q.y, 1.0);
+    col = mix(col, vec3(0.30, 0.31, 0.33), 0.55 * bx * by * (0.7 + 0.3 * sin(q.x * 3.14159)));
+
+    // the rails
     float rd = 1.0e4;
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 40; i++) {
         if (float(i) >= u_rn) break;
         vec4 s = u_rs[i];
-        rd = min(rd, min(segd(p, s.xy, s.zw), segd(pm, s.xy, s.zw)));
+        rd = min(rd, segd(p, s.xy, s.zw));
     }
-    col += u_glow * 0.55 * exp(-rd * 0.22) * step(rd, 40.0);
-    col = mix(col, u_line, (1.0 - smoothstep(1.2, 2.4, rd)) * step(rd, 4.0));
+    col += u_glow * 0.5 * exp(-rd * 0.30) * step(rd, 30.0);
+    col = mix(col, u_line, (1.0 - smoothstep(1.8, 3.4, rd)) * step(rd, 6.0));
 
     // the glass panels
-    for (int i = 0; i < 12; i++) {
-        if (float(i) >= u_n) break;
-        float d = chamfer(p, u_p[i], u_c[i]);
-        float y = clamp((p.y - u_p[i].y) / u_p[i].w, 0.0, 1.0);
-        vec3 glass = mix(u_panel * 1.35, u_panel * 0.7, y);
-        col += u_glow * 0.4 * exp(-max(d, 0.0) * 0.16) * step(0.0, d) * step(d, 30.0);
-        col = mix(col, glass, 0.93 * (1.0 - smoothstep(-0.5, 0.8, d)));
-        float edge = 1.0 - smoothstep(0.8, 2.2, abs(d + 1.2));
-        col = mix(col, u_line, edge * step(d, 2.5));
-        col += u_glow * 0.25 * exp(-abs(d + 1.2) * 0.35) * step(d, 0.0);
+    float ds[4];
+    ds[0] = poly0(p); ds[1] = poly1(p); ds[2] = poly2(p); ds[3] = poly3(p);
+    for (int i = 0; i < 4; i++) {
+        float d = ds[i];
+        if (u_n[i] < 3.0) continue;
+        float shade = 0.9 + 0.1 * sin(p.y * 0.04);
+        col += u_glow * 0.45 * exp(-max(d, 0.0) * 0.20) * step(0.0, d) * step(d, 30.0);
+        col = mix(col, u_panel * shade, 0.95 * (1.0 - smoothstep(-0.6, 0.8, d)));
+        float edge = 1.0 - smoothstep(1.4, 3.2, abs(d + 1.8));
+        col = mix(col, u_line, edge * step(d, 4.0));
+    }
+
+    // the dome
+    vec2 dq = (p - u_dome.xy) / u_dome.zw;
+    float inDome = (1.0 - smoothstep(0.96, 1.0, length(dq))) * step(dq.y, 0.0) * step(-1.0, dq.y);
+    col = mix(col, u_blue * (0.85 + 0.15 * step(0.0, dq.x)), inDome * step(0.0, u_dome.z));
+    // the M stripes: light blue, dark blue, red, slanted to the right at the top
+    vec2 lq = (p - u_logo.xy) / u_logo.zw;
+    if (u_logo.z > 0.0 && lq.y >= 0.0 && lq.y <= 1.0) {
+        float sx = lq.x - (1.0 - lq.y) * 0.5;
+        float a = smoothstep(-0.01, 0.01, sx) * (1.0 - smoothstep(0.21, 0.23, sx));
+        float b = smoothstep(0.27, 0.29, sx) * (1.0 - smoothstep(0.49, 0.51, sx));
+        float r = smoothstep(0.55, 0.57, sx) * (1.0 - smoothstep(0.77, 0.79, sx));
+        col = mix(col, vec3(0.38, 0.74, 0.93), a);
+        col = mix(col, vec3(0.12, 0.25, 0.62), b);
+        col = mix(col, vec3(0.92, 0.14, 0.18), r);
     }
     gl_FragColor = vec4(col, 1.0);
+}
+`;
+}
+const LAMBO = lamboSource();
+
+// The Lambo theme's rev arc: wedge segments split by thin dark gaps, shaded from the inner to the outer edge. Up to the
+// rpm the blue to pale-blue run, then the grey segments, then the orange and red zones (always in colour, as on the
+// reel); a thin line with ticks and a red marker at the rpm. v_uv is 0..1 over the layer, (0,0) top-left.
+//   u_size  layer size    u_center  arc centre in layer px    u_r  outer radius    u_w  band px    u_start  u_sweep  radians
+//   u_segs  segments      u_value  0..1 (rpm / scale)        u_orange, u_red  where the zones start (0..1)
+//   u_ticks  tick intervals along the line (two per 1000 rpm)    u_flash  1: the lit part is white
+const LAMBOARC = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 v_uv;
+uniform vec2 u_size;
+uniform vec2 u_center;
+uniform float u_r;
+uniform float u_w;
+uniform float u_start;
+uniform float u_sweep;
+uniform float u_segs;
+uniform float u_value;
+uniform float u_orange;
+uniform float u_red;
+uniform float u_ticks;
+uniform float u_flash;
+void main() {
+    vec2 p = v_uv * u_size - u_center;
+    float r = length(p);
+    float ang = atan(p.x, -p.y);
+    if (ang < 0.0) ang += 6.2831853;
+    float st = mod(u_start, 6.2831853);
+    float rel = ang - st; if (rel < 0.0) rel += 6.2831853;
+    float f = rel / u_sweep;                       // 0..1 along the arc
+    float rin = u_r - u_w;
+    vec4 outc = vec4(0.0);
+    // the band
+    if (f >= 0.0 && f <= 1.0 && r <= u_r && r >= rin) {
+        float seg = f * u_segs;
+        float within = fract(seg);
+        float gap = 2.2 / (r * u_sweep / u_segs);   // a gap of about 2.2 px
+        float fm = (floor(seg) + 0.5) / u_segs;
+        float lit = step(fm, u_value);
+        float k = (r - rin) / u_w;                  // 0 inner .. 1 outer
+        vec3 base;
+        if (fm >= u_red) base = mix(vec3(0.95, 0.20, 0.18), vec3(0.55, 0.05, 0.06), k);
+        else if (fm >= u_orange) base = mix(vec3(0.98, 0.62, 0.12), vec3(0.72, 0.38, 0.04), k);
+        else if (lit > 0.5) {
+            float t = clamp(fm / max(u_value, 0.05), 0.0, 1.0);
+            vec3 c1 = mix(vec3(0.18, 0.60, 0.90), vec3(0.86, 0.91, 0.95), pow(t, 1.4));
+            base = mix(c1 * 1.08, c1 * 0.72, k);
+        } else {
+            base = mix(vec3(0.90, 0.90, 0.90), vec3(0.42, 0.42, 0.42), k) * (0.66 + 0.34 * (1.0 - fm));
+        }
+        if (u_flash > 0.5 && lit > 0.5) base = vec3(1.0);
+        // a fine carbon weave on the segments
+        float weave = 0.93 + 0.07 * sin(p.x * 1.6) * sin(p.y * 1.6);
+        float m = smoothstep(0.0, gap, within) * (1.0 - smoothstep(1.0 - gap, 1.0, within));
+        outc = vec4(base * weave, m);
+    }
+    // the thin line on the inside edge, with ticks
+    float lr = rin - 5.0;
+    float dl = abs(r - lr);
+    if (f >= -0.002 && f <= 1.002) {
+        float tl = 1.0 - smoothstep(0.7, 1.7, dl);
+        vec3 lc = f >= u_red ? vec3(1.0, 0.25, 0.22) : vec3(0.96, 0.97, 1.0);
+        float tk = f * u_ticks;
+        float tw = 1.6 / (r * u_sweep / u_ticks);
+        float ntk = abs(fract(tk + 0.5) - 0.5);
+        float len = 9.0;
+        float tick = (1.0 - smoothstep(tw * 0.5, tw, ntk)) * step(lr - len, r) * step(r, lr);
+        float a = max(tl, tick);
+        outc = vec4(mix(outc.rgb, lc, a), max(outc.a, a));
+    }
+    // the red marker at the rpm
+    float mf = u_value;
+    float dm = abs(f - mf) * r * u_sweep;
+    if (f >= 0.0 && f <= 1.0 && r <= u_r + 4.0 && r >= rin - 6.0 && u_value > 0.003) {
+        float a = 1.0 - smoothstep(1.0, 2.2, abs(dm - 5.0)) ;
+        a = max(a, 1.0 - smoothstep(1.0, 2.2, abs(dm + 5.0)));
+        outc = vec4(mix(outc.rgb, vec3(1.0, 0.12, 0.12), a), max(outc.a, a));
+    }
+    gl_FragColor = outc;
 }
 `;
 
@@ -1489,4 +1604,4 @@ void main() {
 }
 `;
 
-module.exports = { shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO };
+module.exports = { shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO, lamboarc: LAMBOARC };

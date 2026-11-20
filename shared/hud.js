@@ -82,9 +82,11 @@
  *             "ticks" [speed, rpm], "rpmMax" (speed follows SPEED_SCALE), "fuelSeg" / "oilSeg" [fullX, fullY,
  *             emptyX, emptyY], "strip" [left end x, y, h, slant], "topEnd" x; the middle is black, and the map
  *             window is cut see-through while "holeWhen" is on ("hole", "holeInset", "holeRadius" as fill)
- *   lambo     effect layer (shaders.js lambo): the Lambo theme's carbon honeycomb with glass panels "panels": [{ x, y, w, h
- *             (target px), cut: [top-left, top-right, bottom-right, bottom-left] corner cuts px }] (up to 12) and a glowing
- *             "rail": [[x, y], ...] (up to 17 points, drawn again mirrored on the right). Roles bg, hex, panel, line, glow3.
+ *   lambo     effect layer (shaders.js lambo): the Lambo theme's carbon honeycomb with up to 4 glass panels "panels": [{ points:
+ *             [[x, y], ...] (target px, 16, 16, 8 and 8 corners at most) }], glowing "rails": [[[x, y], ...], ...], a grey "band"
+ *             [x, y, w, h] and a blue "dome" [cx, cy, rx, ry] and the M "logo" [x, y, w, h]. Roles bg, hex, panel, line, glow3, blue.
+ *   lamboarc  effect layer (shaders.js lamboarc): the Lambo theme's rev arc: "center", "r" (outer), "band", "start", "sweep" (degrees),
+ *             "segments", "orangeAt" / "redAt" (0..1, where the zones start), "ticks" (line intervals).
  *   synth     effect layer (shaders.js synth): the Synthwave theme's whole backdrop: a dusk sky with stars, a striped sun
  *             sitting on the horizon, two neon-edged mountain ranges and a perspective grid below it. "horizon" (y in the
  *             layer, 470), "sunX" (the sun's centre and the grid's vanishing point, the layer's middle), "sunR" (sun radius px,
@@ -1830,30 +1832,53 @@ class HudApp {
             c.uniform(ref, 'u_hole', this._hole(w));
             c.uniform(ref, 'u_holeR', [this._holeRadius(w)]);
         } else if (w.type === 'lambo') {
-            const P = (Array.isArray(w.panels) ? w.panels : []).filter((b) => b && isNum(b.x) && isNum(b.y) && isNum(b.w) && isNum(b.h)).slice(0, 12);
-            const pa = [], ca = [];
-            for (let i = 0; i < 12; i++) {
-                const b = P[i] || { x: 0, y: 0, w: 1, h: 1 }, cu = b.cut || [0, 0, 0, 0];
-                // panel coordinates are target px; the layer sits at (w.x, w.y)
-                pa.push(b.x - w.x, b.y - w.y, b.w, b.h); ca.push(cu[0] || 0, cu[1] || 0, cu[2] || 0, cu[3] || 0);
-            }
-            const R = (Array.isArray(w.rail) ? w.rail : []).filter((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1])).slice(0, 17);
+            // panels: polygons (corner lists in target px); their edges, 16 + 16 + 8 + 8 of them, in layer px
+            const CAP = [16, 16, 8, 8], P = Array.isArray(w.panels) ? w.panels : [], cnt = [], edges = [];
+            CAP.forEach((cap, k) => {
+                const pts = ((P[k] && P[k].points) || []).filter((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1])).slice(0, cap);
+                cnt.push(pts.length >= 3 ? pts.length : 0);
+                for (let i = 0; i < cap; i++) {
+                    const a = pts[i], b = pts[(i + 1) % pts.length];
+                    edges.push(...(pts.length >= 3 && a && b ? [a[0] - w.x, a[1] - w.y, b[0] - w.x, b[1] - w.y] : [0, 0, 0, 0]));
+                }
+            });
+            // rails: polylines of target px, as one list of segments
             const rs = [];
-            for (let i = 0; i < 16; i++) {
-                const a = R[i], b = R[i + 1];
-                rs.push(...(a && b ? [a[0] - w.x, a[1] - w.y, b[0] - w.x, b[1] - w.y] : [0, 0, 0, 0]));
-            }
+            (Array.isArray(w.rails) ? w.rails : []).forEach((pl) => {
+                for (let i = 0; Array.isArray(pl) && i + 1 < pl.length && rs.length < 160; i++) rs.push(pl[i][0] - w.x, pl[i][1] - w.y, pl[i + 1][0] - w.x, pl[i + 1][1] - w.y);
+            });
+            const nr = rs.length / 4;
+            while (rs.length < 160) rs.push(0, 0, 0, 0);
+            const bd = Array.isArray(w.band) ? w.band : [0, 0, 1, 1], dm = Array.isArray(w.dome) ? w.dome : [0, 0, 0, 0];
             c.uniform(ref, 'u_size', [w.w, w.h]);
-            c.uniform(ref, 'u_n', [P.length]);
-            c.uniform(ref, 'u_p', pa, { type: 'vec4' });
-            c.uniform(ref, 'u_c', ca, { type: 'vec4' });
-            c.uniform(ref, 'u_rn', [Math.max(0, R.length - 1)]);
+            c.uniform(ref, 'u_n', cnt);
+            c.uniform(ref, 'u_e', edges, { type: 'vec4' });
+            c.uniform(ref, 'u_rn', [nr]);
             c.uniform(ref, 'u_rs', rs, { type: 'vec4' });
+            c.uniform(ref, 'u_band', [bd[0] - w.x, bd[1] - w.y, bd[2], bd[3]]);
+            c.uniform(ref, 'u_dome', [dm[0] - w.x, dm[1] - w.y, dm[2], dm[3]]);
+            const lg = Array.isArray(w.logo) ? w.logo : [0, 0, 0, 0];
+            c.uniform(ref, 'u_logo', [lg[0] - w.x, lg[1] - w.y, lg[2], lg[3]]);
             c.uniform(ref, 'u_bg', rgb(color(t, 'bg')));
             c.uniform(ref, 'u_hex', rgb(color(t, 'hex')));
             c.uniform(ref, 'u_panel', rgb(color(t, 'panel')));
             c.uniform(ref, 'u_line', rgb(color(t, 'line')));
             c.uniform(ref, 'u_glow', rgb(color(t, 'glow3')));
+            c.uniform(ref, 'u_blue', rgb(color(t, 'blue')));
+        } else if (w.type === 'lamboarc') {
+            const max = this._barMax();
+            c.uniform(ref, 'u_size', [w.w, w.h]);
+            c.uniform(ref, 'u_center', w.center);
+            c.uniform(ref, 'u_r', [w.r]);
+            c.uniform(ref, 'u_w', [w.band || 90]);
+            c.uniform(ref, 'u_start', [w.start * Math.PI / 180]);
+            c.uniform(ref, 'u_sweep', [w.sweep * Math.PI / 180]);
+            c.uniform(ref, 'u_segs', [w.segments || 32]);
+            c.uniform(ref, 'u_orange', [isNum(w.orangeAt) ? w.orangeAt : 4900 / max]);
+            c.uniform(ref, 'u_red', [isNum(w.redAt) ? w.redAt : 6100 / max]);
+            c.uniform(ref, 'u_ticks', [w.ticks || 14]);
+            c.uniform(ref, 'u_flash', [0]);
+            c.uniform(ref, 'u_value', [0]);
         } else if (w.type === 'synth') {
             c.uniform(ref, 'u_size', [w.w, w.h]);
             c.uniform(ref, 'u_hz', [isNum(w.horizon) ? w.horizon : 470]);
@@ -2102,7 +2127,7 @@ class HudApp {
                 x.c.uniform(x.ref, 'u_trail', pts, { type: 'vec4' });
                 x.c.uniform(x.ref, 'u_trailN', [n]);
             }
-        } else if (w.type === 'shiftbar' || w.type === 'revarc') {
+        } else if (w.type === 'shiftbar' || w.type === 'revarc' || w.type === 'lamboarc') {
             const rpm = this._raw('rpm');
             const segs = w.segments || (w.type === 'revarc' ? 30 : 40);
             const v = isNum(rpm) ? Math.min(1, Math.max(0, rpm / this._barMax())) : 0;

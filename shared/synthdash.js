@@ -34,6 +34,7 @@ const fmt = (v, dec) => (isNum(v) ? v.toFixed(dec || 0) : '--');
 const temp = (v, mph) => (isNum(v) ? (mph ? v * 9 / 5 + 32 : v) : null);
 /** Text that the kit must not translate (the dash is in its own words). */
 function T(cv, str, x, y, size, color, opts) { return cv.text(str, x, y, size, color, Object.assign({ literal: true }, opts || {})); }
+function lerpHex(a, b, t) { return rgbHex(lerpColor(a, b, t)); }
 function lerpColor(c1, c2, t) { const a = hex(c1), b = hex(c2); return [0, 1, 2].map((i) => Math.round(mix(a[i], b[i], t))); }
 function rgbHex(v) { return '#' + v.map((n) => ('0' + n.toString(16)).slice(-2)).join(''); }
 
@@ -135,7 +136,7 @@ function fillPoly(cv, pts, color) {
 }
 
 /* ---------- Lambo look (after konsti_m440i's cluster): carbon honeycomb, glass panels, blue to orange to red ---------- */
-const L = { bg: '#04080e', glass: '#0a1a2c', edge: '#d6e8ff', blue: '#28a0ff', mblue: '#1848be', red: '#ff2828', orange: '#ff961e', white: '#f4f7fc', dim: '#96b0cc', hex: '#7896be' };
+const L = { bg: '#03060a', glass: '#101c2c', edge: '#d6e8ff', blue: '#28a0ff', mblue: '#1848be', red: '#ff2828', orange: '#ff961e', white: '#f4f7fc', dim: '#96b0cc', hex: '#7896be' };
 
 /** a glass panel with its corners cut (cut: tl, tr, br, bl px) and a bright, glowing edge */
 function glass(cv, p, cut) {
@@ -254,8 +255,9 @@ class SynthDash {
         const rpm = isNum(d.rpm) ? clamp(d.rpm / 7000, 0, 1) : 0;
         for (let i = 0; i < N; i++) {
             const f = (i + 0.5) / N, a = A0 + SW * i / N, a2 = A0 + SW * (i + 1) / N - 1.6;
-            const lit = f <= rpm;
-            const col = !lit ? withAlpha('#ffffff', 0.13) : f > 0.86 ? L.red : f > 0.72 ? L.orange : L.blue;
+            const lit = f <= rpm, t = rpm > 0.02 ? Math.min(1, f / rpm) : 0;
+            // as the cluster: blue running to pale blue while lit, grey when not, the orange and red zones always in colour
+            const col = f > 0.87 ? '#d82a26' : f > 0.70 ? '#ec9a1e' : lit ? lerpHex('#2e9be6', '#d8e6f2', Math.pow(t, 1.4)) : '#9a9ea4';
             cv.arc(cx, cy, R1, R0, a, a2, col);
         }
         for (let k = 0; k < 8; k++) {

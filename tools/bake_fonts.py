@@ -97,24 +97,31 @@ CLUSTER_FONTS = [
     ('w_gear', 'Orbitron[wght].ttf', 118, 'PRNDSM-' + DIGITS, 3, 'Black', {'0': 'O'}),
     ('w_val', 'Orbitron[wght].ttf', 44, DIGITS + ':+-.\u00b0', 0, 'Bold', {'0': 'O'}, '\u00b0'),
     ('w_label', 'Orbitron[wght].ttf', 22, UPPER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}),
-    # Lambo: wide Orbitron; the gear is an outline only (hollow), after the red outlined digit of the reel's cluster
-    ('l_gear', 'Orbitron[wght].ttf', 190, DIGITS + 'PRND-', 0, 'Black', {'0': 'O'}, '', 6),
-    ('l_speed', 'Orbitron[wght].ttf', 104, DIGITS + '-', 3, 'Black', {'0': 'O'}),
-    ('l_num', 'Orbitron[wght].ttf', 42, DIGITS, 0, 'Bold', {'0': 'O'}),
-    ('l_val', 'Orbitron[wght].ttf', 34, DIGITS + ':+-.\u00b0', 0, 'Bold', {'0': 'O'}, '\u00b0'),
-    ('l_label', 'Orbitron[wght].ttf', 17, UPPER + LOWER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}),
-    ('l_head', 'Orbitron[wght].ttf', 26, UPPER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}),
-    ('l_gears', 'Orbitron[wght].ttf', 30, DIGITS, 0, 'Black', {'0': 'O'}),
+    # Lambo: wide oblique Orbitron after konsti_m440i's reel; the gear and the rev numbers are outlines (hollow)
+    ('l_gear', 'Orbitron[wght].ttf', 190, DIGITS + 'PRND-', 0, 'Black', {'0': 'O'}, '', 9, 0.2),
+    ('l_speed', 'Orbitron[wght].ttf', 104, DIGITS + '-', 3, 'Black', {'0': 'O'}, '', 0, 0.2, 0.92),
+    ('l_num', 'Orbitron[wght].ttf', 40, DIGITS, 0, 'Bold', {'0': 'O'}, '', 3, 0.2, 0.9),
+    ('l_val', 'Orbitron[wght].ttf', 44, DIGITS + ':+-.\u00b0', 0, 'Bold', {'0': 'O'}, '\u00b0', 0, 0.2, 0.82),
+    ('l_tyre', 'Orbitron[wght].ttf', 42, DIGITS + '.', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.9),
+    ('l_unit', 'Orbitron[wght].ttf', 17, UPPER + LOWER + DIGITS + ' -/.:%\u00b0\u00d8', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.8),
+    ('l_label', 'Orbitron[wght].ttf', 20, UPPER + LOWER + DIGITS + ' -/.:%\u00b0\u00d8', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.8),
+    ('l_head', 'Orbitron[wght].ttf', 26, UPPER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.8),
+    ('l_trip', 'Orbitron[wght].ttf', 50, DIGITS + ':.-', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.8),
+    ('l_badge', 'Orbitron[wght].ttf', 46, UPPER + LOWER + DIGITS + ' -', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.85),
+    ('l_big', 'Orbitron[wght].ttf', 40, UPPER + DIGITS + ' -/.:%', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.8),
+    ('l_gears', 'Orbitron[wght].ttf', 66, DIGITS, 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.9),
 ]
 FONTS = {'idrive_hud_widgets': HUD_FONTS, 'cluster_themes': CLUSTER_FONTS}
 PAD = 2
 ATLAS_W = 1024
 
 
-def bake(out, name, file, size, chars, stroke=0, weight=None, subs=None, tuck='', hollow=0):
+def bake(out, name, file, size, chars, stroke=0, weight=None, subs=None, tuck='', hollow=0, italic=0, squeeze=1.0):
     """stroke: px of extra weight round every glyph (Michroma has one weight). weight: a named instance of a
     variable font (Orbitron: Regular .. Black), for the M theme's squared BMW-style gear, speed and numbers.
     subs: {char: glyph drawn for it} (Orbitron's zero is slashed; the M8's is plain, so its O stands in).
+    squeeze: horizontal scale of every glyph (0.8: narrower, as the reel's lettering is than Orbitron).
+    italic: shear (0.2 = 11 degrees to the right, the reel's oblique lettering).
     hollow: px of outline drawn round every glyph with the glyph itself cut out (an outline-only digit, Lambo's gear).
     tuck: characters added to a font after layouts were built on its cell height (° on value / y_val, Nov 7 2026):
     they don't count towards the cell, and one that rises above it is drawn lower so its top meets the cell's."""
@@ -144,8 +151,16 @@ def bake(out, name, file, size, chars, stroke=0, weight=None, subs=None, tuck=''
         dr.text((PAD - l, PAD - top + drop.get(c, 0)), glyph(c), font=font, fill=255, anchor='ls', stroke_width=stroke, stroke_fill=255)
         if hollow:
             dr.text((PAD - l, PAD - top + drop.get(c, 0)), glyph(c), font=font, fill=0, anchor='ls', stroke_width=stroke - hollow, stroke_fill=0)
+        if italic:
+            base = PAD - top + drop.get(c, 0)
+            w2 = w + int(italic * base) + 1
+            img = img.transform((w2, height), Image.AFFINE, (1, italic, -italic * base, 0, 1, 0), resample=Image.BICUBIC)
         shift = (tab - adv) / 2 if c in DIGITS else 0
-        cells.append((c, img, round(l - PAD + shift), round(tab if c in DIGITS else adv)))
+        ox, adv_c = round(l - PAD + shift), round(tab if c in DIGITS else adv)
+        if squeeze != 1.0:
+            img = img.resize((max(1, round(img.width * squeeze)), img.height), Image.LANCZOS)
+            ox, adv_c = round(ox * squeeze), round(adv_c * squeeze)
+        cells.append((c, img, ox, adv_c))
 
     # simple row packing
     x = y = 0

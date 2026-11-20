@@ -37,6 +37,10 @@ const ICONS = {
         for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + Math.PI / 8; d = Math.min(d, seg(x, y, 0.5 + 0.42 * Math.sin(a), 0.5 - 0.42 * Math.cos(a), 0.5 + 0.49 * Math.sin(a), 0.5 - 0.49 * Math.cos(a)) - 0.04); }
         return d;
     },
+    // Lambo theme: drivetrain (an H: two axles and the shaft), engine block, exhaust valve (a headset-like pair)
+    drivetrain: (x, y) => Math.min(seg(x, y, 0.2, 0.2, 0.2, 0.8) - 0.06, seg(x, y, 0.8, 0.2, 0.8, 0.8) - 0.06, seg(x, y, 0.2, 0.5, 0.8, 0.5) - 0.05, seg(x, y, 0.1, 0.2, 0.3, 0.2) - 0.05, seg(x, y, 0.7, 0.2, 0.9, 0.2) - 0.05, seg(x, y, 0.1, 0.8, 0.3, 0.8) - 0.05, seg(x, y, 0.7, 0.8, 0.9, 0.8) - 0.05),
+    engine: (x, y) => Math.min(Math.max(Math.abs(x - 0.5) - 0.3, Math.abs(y - 0.58) - 0.2, -(Math.max(Math.abs(x - 0.5) - 0.22, Math.abs(y - 0.58) - 0.12))), seg(x, y, 0.4, 0.3, 0.62, 0.3) - 0.05, seg(x, y, 0.5, 0.3, 0.5, 0.38) - 0.04, seg(x, y, 0.1, 0.5, 0.2, 0.5) - 0.05, seg(x, y, 0.8, 0.5, 0.9, 0.5) - 0.05),
+    exhaust: (x, y) => Math.min(arc(x, y, 0.5, 0.52, 0.34, -0.5 * Math.PI, 0.5 * Math.PI) - 0.045, disc(x, y, 0.18, 0.62, 0.1), disc(x, y, 0.82, 0.62, 0.1), seg(x, y, 0.5, 0.86, 0.5, 0.7) - 0.04),
     oilcan: (x, y) => Math.min(seg(x, y, 0.2, 0.62, 0.6, 0.62) - 0.12, seg(x, y, 0.6, 0.58, 0.9, 0.44) - 0.04, disc(x, y, 0.92, 0.66, 0.05), seg(x, y, 0.3, 0.46, 0.3, 0.34) - 0.035, seg(x, y, 0.22, 0.34, 0.38, 0.34) - 0.04),
 };
 

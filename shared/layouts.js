@@ -41,6 +41,7 @@ const TYPES = {
     tiles: ['tiles'],
     synth: [],
     lambo: [],
+    lamboarc: ['center', 'r', 'start', 'sweep'],
     revarc: ['center', 'r', 'start', 'sweep'],
 };
 const CLASSES = ['ambient', 'content', 'overlay', 'alert'];

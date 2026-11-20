@@ -3,16 +3,16 @@
 
     python3 tools/gen_lambo.py
 
-The "Lambo x BMW" cluster after konsti_m440i's reel: a carbon honeycomb with a glowing rail along the hood and angled
-glass panels (one "lambo" shader), a wide segmented rev arc (cold blue to orange to red) with the numbers 0-7 along
-its inside, a hollow red gear, the speed under it, and the panels: trip, tyres, drivetrain / oil / intake on the
-left; model badge, power and torque, fuel, water and one free readout on the right. The arc stops at +-43 degrees
-so BMW's black gear box (x 1406-1597, y 342-419) and its belt light (x 587-626, y 663-700) stay clear.
+The "Lambo x BMW" cluster, 1:1 after konsti_m440i's reel (the bench photo, measured on the 1920x720 panel): a carbon
+honeycomb, two glowing rails along the hood, four glass panels (the two big side panels follow the rev arc's outer edge),
+a wedge-segment rev arc with the numbers 0-7 as outlines, a hollow red gear between the gear row 2 3 4 | 6 7 8, the speed
+under it and the M stripe. The arc is centred at x 1010 as on the reel; BMW's black gear box (x 1406-1597, y 342-419)
+covers a part of its red zone on the car, as it does the reel's right panel.
 """
 import json, math, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'apps', 'cluster_themes', 'hud', 'layouts', 'lambo.json')
+OUTS = [os.path.join(ROOT, 'apps', a, 'hud', 'layouts', 'lambo.json') for a in ('cluster_themes', 'yusuf_dash')]
 W = []
 
 
@@ -20,109 +20,146 @@ def add(**k):
     W.append(k)
 
 
-def text(id, x, y, w, h, t, font, color, align='left', z=5, **extra):
-    d = dict(id=id, type='text', z=z, x=x, y=y, w=w, h=h, text=t, font=font, color=color, align=align)
+CELL = {'l_gear': 159, 'l_speed': 84, 'l_num': 39, 'l_val': 36, 'l_tyre': 34, 'l_unit': 22, 'l_label': 25, 'l_head': 25,
+        'l_big': 33, 'l_gears': 51, 'l_trip': 40, 'l_badge': 43}
+
+
+def text(id, x, y, t, font, color, align='left', w=None, **extra):
+    """x, y: the text's anchor (left / centre / right edge, vertical centre) in target px."""
+    h = CELL[font]
+    w = w or 300
+    if align == 'left':
+        w = min(w, 1920 - x)
+    left = x if align == 'left' else x - w / 2 if align == 'center' else x - w
+    d = dict(id=id, type='text', z=5, x=round(left), y=round(y - h / 2), w=w, h=h, text=t, font=font, color=color, align=align)
     d.update(extra)
     add(**d)
 
 
-CELL = {'l_gear': 153, 'l_speed': 84, 'l_num': 34, 'l_val': 29, 'l_label': 18, 'l_head': 25, 'l_gears': 26}
+def icon(id, name, cx, cy, s, color='blue'):
+    add(id=id, type='icon', icon=name, z=5, x=round(cx - s / 2), y=round(cy - s / 2), w=s, h=s, color=color)
 
-# ---- background: honeycomb, rail, panels
+
+def rule(id, x0, x1, y):
+    add(id=id, type='fill', **{'class': 'content'}, z=3, x=x0, y=y, w=x1 - x0, h=2, color='sep')
+
+
+# ---------- geometry
+CX, CY, R, BAND, A0, SW = 1010, 870, 728, 92, -59.0, 118.0
+EDGE = 755                       # the side panels' edge, concentric with the arc
+
+
+def on(theta, r=EDGE):
+    a = math.radians(theta)
+    return [round(CX + r * math.sin(a)), round(CY - r * math.cos(a))]
+
+
+left_arc = [on(-t) for t in (37, 41, 45, 49, 53, 57, 62, 67)]
+right_arc = [on(t) for t in (35, 39, 43, 47, 51, 55, 59, 64)]
 PANELS = [
-    dict(x=230, y=112, w=400, h=70, cut=[16, 16, 16, 16]),      # trip
-    dict(x=70, y=200, w=400, h=150, cut=[20, 0, 34, 0]),        # tyres
-    dict(x=30, y=362, w=440, h=215, cut=[0, 0, 40, 24]),        # drivetrain, oil, intake
-    dict(x=1290, y=112, w=400, h=70, cut=[16, 16, 16, 16]),     # badge
-    dict(x=1450, y=200, w=400, h=128, cut=[34, 0, 0, 20]),      # power, torque
-    dict(x=1450, y=436, w=440, h=141, cut=[24, 0, 0, 40]),      # fuel, water, free readout
+    dict(points=[[193, 202], [548, 209], [575, 237]] + left_arc + [[39, 582], [9, 557], [11, 363]]),                  # tyres, drivetrain, oil
+    dict(points=right_arc + [[1870, 548], [1900, 521], [1900, 358], [1756, 223], [1468, 223]]),                       # power, valve, fuel, water
+    dict(points=[[302, 112], [434, 89], [749, 97], [770, 124], [770, 157], [721, 188], [319, 182], [301, 165]]),      # trip
+    dict(points=[[1262, 135], [1283, 115], [1563, 115], [1672, 137], [1672, 187], [1655, 201], [1281, 198], [1261, 152]]),   # badge
 ]
-RAIL = [[4, 600], [12, 430], [38, 300], [70, 224], [100, 156], [200, 101], [300, 73], [400, 52], [500, 37], [600, 34], [700, 28], [800, 19], [806, 54]]
-add(id='bg', type='lambo', **{'class': 'content'}, z=0, x=0, y=0, w=1920, h=720, panels=PANELS, rail=RAIL)
+RAILS = [
+    [[9, 296], [121, 137], [230, 86], [335, 63], [459, 46], [608, 41], [776, 40], [818, 95]],
+    [[1213, 108], [1230, 58], [1267, 56], [1426, 68], [1575, 80], [1714, 118], [1813, 167], [1858, 237], [1903, 309]],
+]
+add(id='bg', type='lambo', **{'class': 'content'}, z=0, x=0, y=0, w=1920, h=720, panels=PANELS, rails=RAILS,
+    band=[683, 447, 637, 52], dome=[600, 615, 45, 32], logo=[1339, 137, 66, 44])
 
-# ---- rev arc and its numbers
-CX, CY, R, BAND, A0, SW = 960, 850, 700, 64, -43.0, 86.0
-add(id='revs', type='revarc', **{'class': 'content'}, z=2, x=400, y=130, w=1120, h=300, center=[CX - 400, CY - 130], r=R, band=BAND,
-    start=(360 + A0), sweep=SW, segments=32)
+# ---------- rev arc, its numbers
+add(id='revs', type='lamboarc', **{'class': 'content'}, z=2, x=360, y=120, w=1320, h=420, center=[CX - 360, CY - 120], r=R, band=BAND,
+    start=360 + A0, sweep=SW, segments=32, orangeAt=0.70, redAt=0.87, ticks=14)
 for k in range(8):
     a = math.radians(A0 + SW * k / 7)
-    r = R - BAND - 36
-    cx, cy = CX + r * math.sin(a), CY - r * math.cos(a)
-    text('n%d' % k, round(cx - 24), round(cy - CELL['l_num'] / 2), 48, CELL['l_num'], str(k), 'l_num', 'red' if k >= 6 else 'fg', 'center')
-text('rpm_unit', 560, 520, 200, 20, 'RPM X 1000', 'l_label', 'dim', 'left')
+    r = 579
+    text('n%d' % k, CX + r * math.sin(a), CY - r * math.cos(a), str(k), 'l_num', 'red' if k >= 6 else 'fg', 'center', w=60)
+text('rpm_unit', 619, 528, 'RPM X 1000', 'l_label', 'fg', 'left')
 
-# ---- gear, the other gears, speed, M stripe, mode
-text('gear', 710, 300, 500, CELL['l_gear'], '{{gearnum}}', 'l_gear', 'red', 'center', glow=True, hotWhen='now')
-text('gears_lo', 700, 462, 220, CELL['l_gears'], '234', 'l_gears', 'dim', 'right', spacing=16)
-text('gears_hi', 1000, 462, 220, CELL['l_gears'], '678', 'l_gears', 'dim', 'left', spacing=16)
-text('speed', 760, 498, 400, CELL['l_speed'], '{{speed}}', 'l_speed', 'fg', 'center', glow=True)
-text('speed_unit', 760, 586, 400, CELL['l_label'], '{{u:speed}}', 'l_label', 'dim', 'center', spacing=2)
-for i, c in enumerate(['blue', 'mblue', 'red']):
-    add(id='mstripe%d' % i, type='fill', **{'class': 'content'}, z=3, x=870 + i * 60, y=612, w=60, h=5, color=c)
-text('mode', 760, 628, 400, CELL['l_label'], '{{mode}}', 'l_label', 'dim', 'center', spacing=2)
+# ---------- centre: the gear row, the gear, the speed, the M stripe
+text('gears_lo', 782, 473, '234', 'l_gears', 'pale', 'center', w=260, spacing=24)
+text('gears_hi', 1228, 470, '678', 'l_gears', 'pale', 'center', w=260, spacing=24)
+text('gear', 1017, 388, '{{gearnum}}', 'l_gear', 'red', 'center', w=300, glow=True, hotWhen='now')
+text('speed', 1017, 537, '{{speed}}', 'l_speed', 'fg', 'center', w=360, glow=True)
+text('speed_unit', 1017, 597, '{{u:speed}}', 'l_label', 'fg', 'center', w=200)
+for i, c in enumerate(['stripe1', 'blue', 'red']):
+    add(id='mstripe%d' % i, type='fill', **{'class': 'content'}, z=3, x=902 + i * 77, y=618, w=77, h=4, color=c)
 
-# ---- left panels
-text('trip_t', 254, 124, 120, CELL['l_label'], 'TIME', 'l_label', 'accent', 'left')
-text('trip_v', 254, 146, 130, CELL['l_val'], '{{time}}', 'l_val', 'fg', 'left')
-text('trip_r', 392, 124, 100, CELL['l_label'], 'RANGE', 'l_label', 'accent', 'left')
-text('trip_rv', 392, 146, 110, CELL['l_val'], '{{range}}', 'l_val', 'fg', 'left')
-text('trip_ru', 502, 156, 40, CELL['l_label'], '{{u:dist}}', 'l_label', 'dim', 'left')
-text('trip_a', 548, 124, 80, CELL['l_label'], 'AVG', 'l_label', 'accent', 'left')
-text('trip_av', 548, 146, 70, CELL['l_val'], '{{avgSpeed}}', 'l_val', 'fg', 'left')
+# ---------- trip panel
+icon('trip_i', 'gauge', 468, 109, 26)
+text('trip_h', 498, 110, 'TRIP', 'l_head', 'fg')
+for i, (cx, tok, lab) in enumerate([(383, '{{time}}', 'TIME'), (523, '{{range}}', '{{u:dist}}'), (652, '{{avgSpeed}}', 'AVG {{u:speed}}')]):
+    text('trip_v%d' % i, cx, 142, tok, 'l_trip', 'fg', 'center', w=150)
+    text('trip_l%d' % i, cx, 171, lab, 'l_label', 'fg', 'center', w=150)
 
-text('tyre_h', 100, 212, 160, CELL['l_label'], 'TYRES', 'l_label', 'accent', 'left', spacing=2)
-text('tyre_up', 300, 212, 60, CELL['l_label'], '{{u:pressure}}', 'l_label', 'dim', 'left')
-text('tyre_ut', 392, 212, 60, CELL['l_label'], '{{u:temp}}', 'l_label', 'dim', 'left')
-for name, col, row in [('FL', 0, 0), ('FR', 1, 0), ('RL', 0, 1), ('RR', 1, 1)]:
-    x = 96 + col * 188
-    y = 244 + row * 50
-    text('tp_' + name, x, y, 90, CELL['l_val'], '{{tyreP:%s}}' % name, 'l_val', 'fg', 'left')
-    text('tt_' + name, x + 96, y + 8, 70, CELL['l_label'], '{{tyreT:%s}}' % name, 'l_label', 'dim', 'left')
-
-text('dt_h', 60, 376, 220, CELL['l_label'], 'DRIVETRAIN', 'l_label', 'accent', 'left', spacing=2)
-text('dt_v', 60, 400, 200, CELL['l_head'], 'RWD', 'l_head', 'red', 'left')
+# ---------- left panel: tyres, drivetrain, oil
+icon('tyre_i', 'tyre', 232, 223, 32)
+text('tyre_h', 263, 224, 'TYRES', 'l_head', 'fg')
+for name, (cx, tx), cy in [('FL', (220, 272), 262), ('FR', (369, 419), 262), ('RL', (220, 272), 302), ('RR', (369, 419), 302)]:
+    text('tp_' + name, cx, cy, '{{tyreP:%s}}' % name, 'l_tyre', 'fg', 'center', w=110)
+    text('tt_' + name, tx, cy + 3, '{{tyreT:%s}}' % name, 'l_label', 'blue', 'left', w=70)
+rule('sep1', 72, 466, 332)
+icon('dt_i', 'drivetrain', 62, 361, 30)
+text('dt_h', 91, 362, 'DRIVETRAIN', 'l_head', 'fg')
+text('dt_v', 91, 393, 'RWD', 'l_big', 'red')
+rule('sep2', 29, 379, 429)
 
 
-def meter(id, x, y, w, signal, mn, mx, conn=1):
-    add(id=id, type='meter', **{'class': 'content'}, z=2, x=x, y=y, w=w, h=12, signal=signal, min=mn, max=mx, segments=int(w / 11),
-        gap=3, colors=['blue', 'white', 'red'], at=[0.55, 0.85], conn=conn)
+def meter(id, x0, x1, ymid, signal, mn, mx, h=20, gap=1.5, n=50, conn=1):
+    add(id=id, type='meter', **{'class': 'content'}, z=2, x=x0, y=ymid - h // 2, w=x1 - x0, h=h, signal=signal, min=mn, max=mx,
+        segments=n, gap=gap, colors=['blue', 'blue', 'blue'], at=[1, 1], trackColor='trk', conn=conn)
 
 
-for i, (lab, tok, unit, sig, mn, mx) in enumerate([('OIL', '{{oil}}', '{{u:temp}}', 'oil', 40, 150), ('INTAKE', '{{intake}}', '{{u:temp}}', 'intake', 0, 80)]):
-    y = 448 + i * 62
-    text('lt%d_l' % i, 60, y + 8, 100, CELL['l_label'], lab, 'l_label', 'dim', 'left')
-    text('lt%d_v' % i, 170, y, 150, CELL['l_val'], tok, 'l_val', 'fg', 'right')
-    text('lt%d_u' % i, 328, y + 8, 60, CELL['l_label'], unit, 'l_label', 'dim', 'left')
-    meter('lt%d_m' % i, 60, y + 36, 360, sig, mn, mx)
+icon('oil_i', 'oilcan', 54, 460, 28)
+text('oil_l', 81, 460, 'OIL', 'l_head', 'fg')
+text('oil_v', 270, 460, '{{oil}}', 'l_val', 'fg', 'right', w=120)
+text('oil_u', 290, 462, '{{u:temp}}', 'l_unit', 'fg')
+meter('oil_m', 37, 327, 485, 'oil', 40, 150)
+text('in_l', 37, 529, 'INTAKE', 'l_head', 'fg')
+text('in_v', 270, 527, '{{intake}}', 'l_val', 'fg', 'right', w=120)
+text('in_u', 290, 529, '{{u:temp}}', 'l_unit', 'fg')
+meter('in_m', 34, 291, 557, 'intake', 0, 80, n=46)
 
-# ---- right panels
-text('badge', 1290, 134, 400, CELL['l_head'], '{{badge}}', 'l_head', 'fg', 'center', glow=True)
-text('pw_h', 1478, 210, 300, CELL['l_label'], 'POWER / TORQUE', 'l_label', 'accent', 'left', spacing=2)
+# ---------- right panel: power / torque, the free readout, fuel, water
+icon('pw_i', 'engine', 1481, 240, 28)
+text('pw_h', 1503, 240, 'POWER / TORQUE', 'l_head', 'fg')
 for i, (tok, unit, sig) in enumerate([('{{power}}', 'kW', 'powerPct'), ('{{torque}}', '{{u:torque}}', 'torquePct')]):
-    y = 238 + i * 44
-    text('pw%d_v' % i, 1470, y, 110, CELL['l_val'], tok, 'l_val', 'fg', 'right')
-    text('pw%d_u' % i, 1588, y + 8, 70, CELL['l_label'], unit, 'l_label', 'dim', 'left')
-    meter('pw%d_m' % i, 1664, y + 8, 170, sig, 0, 100)
+    y = 274 + i * 36
+    text('pw%d_v' % i, 1622, y, tok, 'l_tyre', 'fg', 'right', w=100)
+    text('pw%d_u' % i, 1630, y + 2, unit, 'l_unit', 'fg', w=50)
+    meter('pw%d_m' % i, 1674, 1776, y + 1, sig, 0, 100, h=17, n=26)
+rule('sep3', 1530, 1853, 336)
+icon('ex_i', 'exhaust', 1580, 361, 28)
+text('slot1_head', 1602, 363, '{{slotHead:1}}', 'l_head', 'fg')
+text('slot1', 1607, 391, '{{slot:1}}{{slotSuffix:1}} {{slotUnit:1}}', 'l_big', 'blue', slot='1', fit=['l_head'], w=260)
+rule('sep4', 1602, 1888, 419)
+icon('fu_i', 'fuel', 1660, 445, 26)
+text('fu_l', 1682, 445, 'FUEL', 'l_head', 'fg')
+text('fu_v', 1854, 444, '{{fuelPct}}', 'l_tyre', 'fg', 'right', w=100)
+text('fu_u', 1863, 447, '%', 'l_unit', 'fg', w=30)
+meter('fu_m', 1647, 1880, 470, 'fuel', 0, 1, n=46)
+icon('wa_i', 'therm', 1664, 505, 26)
+text('wa_l', 1686, 507, 'WATER', 'l_head', 'fg')
+text('wa_v', 1854, 505, '{{coolant}}', 'l_tyre', 'fg', 'right', w=100)
+text('wa_u', 1863, 508, '{{u:temp}}', 'l_unit', 'fg', w=40)
+meter('wa_m', 1677, 1880, 532, 'coolant', 40, 130, n=40)
 
-for i, (lab, tok, unit, sig, mn, mx) in enumerate([('FUEL', '{{fuelPct}}', '%', 'fuel', 0, 1), ('WATER', '{{coolant}}', '{{u:temp}}', 'coolant', 40, 130)]):
-    y = 448 + i * 44
-    text('rt%d_l' % i, 1478, y + 8, 100, CELL['l_label'], lab, 'l_label', 'dim', 'left')
-    text('rt%d_v' % i, 1570, y, 90, CELL['l_val'], tok, 'l_val', 'fg', 'right')
-    text('rt%d_u' % i, 1668, y + 8, 50, CELL['l_label'], unit, 'l_label', 'dim', 'left')
-    meter('rt%d_m' % i, 1730, y + 8, 130, sig, mn, mx)
-text('slot1_head', 1478, 546, 150, CELL['l_label'], '{{slotHead:1}} {{slotUnit:1}}', 'l_label', 'dim', 'left')
-text('slot1', 1640, 538, 220, CELL['l_val'], '{{slot:1}}', 'l_val', 'fg', 'right', slot='1', fit=['l_label'])
+# ---------- the model badge, right of the stripes
+text('badge', 1411, 162, '{{badge}}', 'l_badge', 'fg', 'left', w=250)
 
 doc = {
     'schemaVersion': 2,
     'name': 'Lambo',
     'packWaste': 3,
     'theme': 'lambo',
-    'slots': [{'id': '1', 'where': 'right, bottom', 'default': 'boost'}],
-    '_about': 'Lambo cluster, generated by tools/gen_lambo.py (edit that and regenerate): after konsti_m440i\'s Lambo x BMW reel.',
+    'slots': [{'id': '1', 'where': 'right, middle', 'default': 'boost'}],
+    '_about': "Lambo cluster, generated by tools/gen_lambo.py (edit that and regenerate): 1:1 after konsti_m440i's Lambo x BMW reel.",
     'widgets': W,
 }
-with open(OUT, 'w') as f:
-    json.dump(doc, f, indent=2)
-    f.write('\n')
-print('wrote', OUT, len(W), 'widgets')
+for out in OUTS:
+    with open(out, 'w') as f:
+        json.dump(doc, f, indent=2)
+        f.write('\n')
+print('wrote', len(OUTS), 'layouts,', len(W), 'widgets')

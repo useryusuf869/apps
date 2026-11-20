@@ -990,7 +990,7 @@
       "key": "badgeBMW",
       "label": "BMW im Schriftzug",
       "type": "bool",
-      "default": true
+      "default": false
     },
     {
       "key": "demo",
