@@ -67,7 +67,7 @@ RAILS = [
     [[1213, 108], [1230, 58], [1267, 56], [1426, 68], [1575, 80], [1714, 118], [1813, 167], [1858, 237], [1903, 309]],
 ]
 add(id='bg', type='lambo', **{'class': 'content'}, z=0, x=0, y=0, w=1920, h=720, panels=PANELS, rails=RAILS,
-    band=[683, 447, 637, 52], dome=[600, 615, 45, 32], logo=[1339, 137, 66, 44])
+    band=[683, 447, 637, 52], dome=[600, 615, 45, 32], logo=[1300, 137, 66, 44])
 
 # ---------- rev arc, its numbers
 add(id='revs', type='lamboarc', **{'class': 'content'}, z=2, x=360, y=120, w=1320, h=420, center=[CX - 360, CY - 120], r=R, band=BAND,
@@ -147,7 +147,7 @@ text('wa_u', 1863, 508, '{{u:temp}}', 'l_unit', 'fg', w=40)
 meter('wa_m', 1677, 1880, 532, 'coolant', 40, 130, n=40)
 
 # ---------- the model badge, right of the stripes
-text('badge', 1411, 162, '{{badge}}', 'l_badge', 'fg', 'left', w=250)
+text('badge', 1490, 162, '{{badge}}', 'l_badge', 'fg', 'center', w=250)
 
 doc = {
     'schemaVersion': 2,

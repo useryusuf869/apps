@@ -1073,6 +1073,9 @@ class HudApp {
         return isNum(lim) && lim > 0 && isNum(v) && v > lim ? id : null;
     }
 
+    /** the Badge tab's model is an M model (M340i, X3 M40i, i4 M50 ...) */
+    _isMBadge() { return /(^|\s)M\d/.test(String(this.setting('badge') || '')); }
+
     _barMax(w) { return Math.ceil(this.setting('redline') / 1000) * 1000 + ((w && w.over) || 0); }
 
     /** The shift point now ({ rpm, cold }) and whether the rpm is at or past it. */
@@ -1857,7 +1860,7 @@ class HudApp {
             c.uniform(ref, 'u_rs', rs, { type: 'vec4' });
             c.uniform(ref, 'u_band', [bd[0] - w.x, bd[1] - w.y, bd[2], bd[3]]);
             c.uniform(ref, 'u_dome', [dm[0] - w.x, dm[1] - w.y, dm[2], dm[3]]);
-            const lg = Array.isArray(w.logo) ? w.logo : [0, 0, 0, 0];
+            const lg = Array.isArray(w.logo) && this._isMBadge() ? w.logo : [0, 0, 0, 0];
             c.uniform(ref, 'u_logo', [lg[0] - w.x, lg[1] - w.y, lg[2], lg[3]]);
             c.uniform(ref, 'u_bg', rgb(color(t, 'bg')));
             c.uniform(ref, 'u_hex', rgb(color(t, 'hex')));
@@ -2060,6 +2063,13 @@ class HudApp {
             if (!force && key === x.last) return;
             x.last = key; x.lastPaint = now;
             this._blitDiff(x, this._paintBadge(w, s, tone, fresh));
+        } else if (w.type === 'lambo') {
+            // the M stripes follow the badge: only an M model shows them
+            const on = this._isMBadge();
+            if (!force && x.mOn === on) return;
+            x.mOn = on;
+            const lg = Array.isArray(w.logo) && on ? w.logo : [0, 0, 0, 0];
+            x.c.uniform(x.ref, 'u_logo', [lg[0] - w.x, lg[1] - w.y, lg[2], lg[3]]);
         } else if (w.type === 'synth') {
             // the grid runs towards the car: a phase of 0..1 per cell, moved by the speed (km/h) and sent about 8 times a
             // second, only when it has moved. A rebuild (force) sends it as it is.

@@ -298,7 +298,7 @@
         32
       ],
       "logo": [
-        1339,
+        1300,
         137,
         66,
         44
@@ -1323,14 +1323,14 @@
       "id": "badge",
       "type": "text",
       "z": 5,
-      "x": 1411,
+      "x": 1365,
       "y": 140,
       "w": 250,
       "h": 43,
       "text": "{{badge}}",
       "font": "l_badge",
       "color": "fg",
-      "align": "left"
+      "align": "center"
     }
   ]
 }
