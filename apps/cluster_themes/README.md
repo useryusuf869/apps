@@ -81,6 +81,17 @@ An 80s digital dash: amber seven-segment digits with their unlit 8s showing fain
 
 <p align="center"><img src="../../docs/images/cluster-retro80s.png" width="900" alt="Retro 80s theme"></p>
 
+### Synthwave
+
+A neon dusk, after the cluster in sl0w.g26's G26 reel. One shader draws the whole scene: a starry sky, a striped sun on the horizon, two neon-edged mountain ranges and a perspective grid that runs towards you, faster the faster you drive (slowly at a standstill).
+
+- **Top:** a neon rev bar across the sky (cyan, pink from the shift zone, red at the redline) with the rpm under it.
+- **Left:** the speed in big cyan numbers.
+- **Right:** the gear in pink and the drive mode under it, clear of BMW's black gear box.
+- **Bottom, on the grid:** the clock in the middle and four readouts (oil, coolant, boost and range, changeable on the Readouts tab).
+
+<p align="center"><img src="../../docs/images/cluster-synthwave.png" width="900" alt="Synthwave theme"></p>
+
 ### Cruise
 
 Calm and quiet for the highway: the speed in soft white, the gear beside it, and one row of trip figures (range, fuel, outside temperature, your average speed this drive and the time). No rev bar, and nothing red until the fuel runs low. The average speed counts only time moving and shows after the first minute of the drive.
@@ -93,7 +104,7 @@ A safety dash for hard pulls, in BMW M colours: twelve tiles in a grid (rpm, spe
 
 <p align="center"><img src="../../docs/images/cluster-dyno.png" width="900" alt="Dyno theme"></p>
 
-Minimal, Roadster, Track, Drag, Rally, Retro 80s, Cruise and Dyno have no map window yet; with "Show Waze map inside the theme" on, Waze stays in its usual place while they show.
+Minimal, Roadster, Track, Drag, Rally, Retro 80s, Synthwave, Cruise and Dyno have no map window yet; with "Show Waze map inside the theme" on, Waze stays in its usual place while they show.
 
 More themes are on the way.
 
@@ -107,7 +118,7 @@ More themes are on the way.
 ## Settings
 
 - **Theme**, and one per drive mode.
-- **Readouts:** pick which car sensor each GT3, Roadster, Track, Drag, Rally, Retro 80s or Dyno readout shows (speed, rpm, boost, temperatures, tyres, fuel, g, power and more). Plug-in hybrids can also show **Hybrid battery**, the high-voltage battery's charge in % (not yet checked on a hybrid).
+- **Readouts:** pick which car sensor each GT3, Roadster, Track, Drag, Rally, Retro 80s, Synthwave or Dyno readout shows (speed, rpm, boost, temperatures, tyres, fuel, g, power and more). Plug-in hybrids can also show **Hybrid battery**, the high-voltage battery's charge in % (not yet checked on a hybrid).
 - **Show Waze map inside the theme:** GT3, Sport and M open a window in the middle and Waze on Cluster draws its map in it, above BMW's own map view, so nothing shows twice. When the map goes away the theme fills back in. While it is on, Waze's map on the HUD is off. Needs robertnisipeanu's Waze on Cluster; turning it off gives Waze its usual place back.
 - **Badge:** the model name, like "BMW X3 M40i", as text in the theme's font (GT3 top left, Sport and M bottom centre). Off by default.
 - **Warnings:** oil, coolant and boost limits. A readout over its limit flashes red (oil 130°C and coolant 115°C by default, boost off).

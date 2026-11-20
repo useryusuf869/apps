@@ -1279,4 +1279,129 @@ void main() {
 }
 `;
 
-module.exports = { shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES };
+const SYNTH = `// The Synthwave theme's whole backdrop in one cluster-render "effect" layer (GLSL ES 1.00): a dusk sky, a striped
+// sun sitting on the horizon, two neon-edged mountain ranges and a perspective grid running to the horizon.
+// v_uv is 0..1 across the layer, (0,0) at the top-left as on the car. Positions in layer px. Uniforms from hud.js:
+//   u_size   layer size (w, h)           u_hz     the horizon's y         u_sun   sun centre x, sun radius
+//   u_phase  grid scroll, 0..1 = one cell of the horizontal lines (hud.js moves it with the speed)
+//   u_skyTop, u_skyLow   the sky at the top and at the horizon             u_floor   the ground under the grid
+//   u_sunA, u_sunB, u_sunC   the sun's colours, top, middle, bottom        u_grid    the grid lines
+//   u_ridge  the mountains' neon edge          u_ridgeFill   their body
+// Output is opaque (alpha 1): the layer replaces BMW's gauges under it, like the fill widget.
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 v_uv;
+uniform vec2 u_size;
+uniform float u_hz;
+uniform vec2 u_sun;
+uniform float u_phase;
+uniform vec3 u_skyTop;
+uniform vec3 u_skyLow;
+uniform vec3 u_floor;
+uniform vec3 u_sunA;
+uniform vec3 u_sunB;
+uniform vec3 u_sunC;
+uniform vec3 u_grid;
+uniform vec3 u_ridge;
+uniform vec3 u_ridgeFill;
+
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float tri(float x) { return abs(fract(x) * 2.0 - 1.0); }
+
+// height of the mountains above the horizon at x, in px: none under the sun, rising to both sides
+float ridge(float x) {
+    float side = step(u_sun.x, x);
+    float dx = abs(x - u_sun.x) / (u_size.x * 0.5);
+    float env = smoothstep(0.30, 1.10, dx);
+    float xs = abs(x - u_sun.x) + side * 211.0;
+    float n = 0.55 * tri(xs / 190.0) + 0.3 * tri(xs / 83.0 + 0.31) + 0.15 * tri(xs / 37.0 + 0.7);
+    return env * (24.0 + 140.0 * n);
+}
+
+void main() {
+    vec2 p = v_uv * u_size;
+    float hz = u_hz;
+    vec3 col;
+
+    if (p.y < hz) {
+        // sky: dark at the top, a magenta-hot glow towards the horizon, a few faint stars
+        float t = clamp(p.y / hz, 0.0, 1.0);
+        col = mix(u_skyTop, u_skyLow, pow(t, 1.7));
+        vec2 cp = floor(p / 13.0);
+        vec2 sc0 = (cp + 0.2 + 0.6 * vec2(hash(cp + 3.1), hash(cp + 7.7))) * 13.0;
+        float star = step(0.93, hash(cp)) * smoothstep(1.5, 0.3, length(p - sc0));
+        col += vec3(0.85, 0.88, 1.0) * star * (1.0 - t) * 0.65;
+
+        // the sun's halo
+        float d = length(p - vec2(u_sun.x, hz));
+        col += u_sunB * 0.30 * exp(-max(d - u_sun.y, 0.0) / 75.0);
+
+        // the sun: yellow at the top, orange, then pink at the horizon, cut by stripes that widen downwards
+        float up = hz - p.y;                           // px above the horizon
+        float k = clamp(1.0 - up / u_sun.y, 0.0, 1.0); // 0 at the sun's top, 1 at the horizon
+        float body = smoothstep(u_sun.y, u_sun.y - 1.5, d);
+        vec3 sc = k < 0.5 ? mix(u_sunA, u_sunB, k * 2.0) : mix(u_sunB, u_sunC, (k - 0.5) * 2.0);
+        float period = 24.0;
+        float gap = mix(1.0, 15.0, smoothstep(0.42, 1.0, k));
+        float cut = (k > 0.42) ? step(mod(up, period), gap) : 0.0;
+        col = mix(col, sc, body * (1.0 - cut));
+
+        // mountains in front of the sun: a dark body with a neon edge
+        float hh = ridge(p.x);
+        float edge = hz - hh;
+        if (p.y > edge) {
+            float depth = clamp((p.y - edge) / max(hh, 1.0), 0.0, 1.0);
+            col = mix(u_ridgeFill, u_ridgeFill * 0.45, depth);
+            col += u_ridge * 0.18 * exp(-(p.y - edge) / 14.0);
+        }
+        float e = abs(p.y - edge);
+        float ln = smoothstep(2.4, 0.4, e);
+        float glow = exp(-e / 7.0) * 0.28;
+        float has = smoothstep(0.5, 8.0, hh);
+        col = mix(col, u_ridge, ln * has);
+        col += u_ridge * glow * has;
+    } else {
+        // ground: the perspective grid. s is 0 at the horizon and 1 at the bottom edge; depth z = 1 / (s + 0.02)
+        float H = u_size.y - hz;
+        float dy = max(p.y - hz, 0.5);
+        float s = dy / H;
+        col = mix(u_skyLow * 0.55, u_floor, smoothstep(0.0, 0.55, s));
+
+        float z = 1.0 / (s + 0.02);
+        float m = z * 0.30 + u_phase;                  // 0.30: cells of horizontal lines per unit of depth
+        float wm = 1.0 / ((s + 0.02) * (s + 0.02) * H) * 0.30;   // m per screen px
+        float dist = abs(fract(m + 0.5) - 0.5);
+        float lw = 1.5;
+        float core = 1.0 - smoothstep(0.0, lw * wm, dist);
+        float halo = 1.0 - smoothstep(0.0, lw * 4.0 * wm, dist);
+        float fadeH = 1.0 - smoothstep(0.07, 0.13, lw * wm);
+
+        float cell = 118.0;                            // px between vertical lines at the bottom edge
+        float u = (p.x - u_sun.x) * H / (cell * dy);   // 0 under the vanishing point, 1 per line
+        float wv = H / (cell * dy);                    // u per screen px
+        float dv = abs(fract(u + 0.5) - 0.5);
+        float coreV = 1.0 - smoothstep(0.0, lw * wv, dv);
+        float haloV = 1.0 - smoothstep(0.0, lw * 4.0 * wv, dv);
+        float fadeV = 1.0 - smoothstep(0.07, 0.13, lw * wv);
+
+        float lines = max(core * fadeH, coreV * fadeV);
+        float softH = halo * (1.0 - smoothstep(0.07, 0.13, lw * 4.0 * wm));
+        float softV = haloV * (1.0 - smoothstep(0.07, 0.13, lw * 4.0 * wv));
+        float soft = max(softH, softV);
+        float fade0 = smoothstep(0.02, 0.20, s);          // lines melt into the horizon glow
+        col += u_grid * (0.22 * soft + 0.95 * lines) * fade0;
+        col += u_skyLow * 0.35 * exp(-s * 18.0);       // the horizon's glow on the ground
+    }
+
+    // the bright horizon line
+    float hl = exp(-abs(p.y - hz) / 2.2);
+    col += mix(u_skyLow, vec3(1.0), 0.45) * hl * 0.9;
+
+    gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+}
+`;
+
+module.exports = { shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH };

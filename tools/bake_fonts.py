@@ -92,6 +92,11 @@ CLUSTER_FONTS = [
     # Cruise: calm, light numbers
     ('c_speed', 'BarlowSemiCondensed-Medium.ttf', 150, DIGITS + '-'),
     ('c_val', 'BarlowSemiCondensed-Medium.ttf', 62, DIGITS + '.:-+°'),
+    # Synthwave: Orbitron Black for the neon speed and gear, Bold for the readouts and captions
+    ('w_speed', 'Orbitron[wght].ttf', 150, DIGITS + '-', 4, 'Black', {'0': 'O'}),
+    ('w_gear', 'Orbitron[wght].ttf', 118, 'PRNDSM-' + DIGITS, 3, 'Black', {'0': 'O'}),
+    ('w_val', 'Orbitron[wght].ttf', 44, DIGITS + ':+-.\u00b0', 0, 'Bold', {'0': 'O'}, '\u00b0'),
+    ('w_label', 'Orbitron[wght].ttf', 22, UPPER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}),
 ]
 FONTS = {'idrive_hud_widgets': HUD_FONTS, 'cluster_themes': CLUSTER_FONTS}
 PAD = 2

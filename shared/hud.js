@@ -82,6 +82,12 @@
  *             "ticks" [speed, rpm], "rpmMax" (speed follows SPEED_SCALE), "fuelSeg" / "oilSeg" [fullX, fullY,
  *             emptyX, emptyY], "strip" [left end x, y, h, slant], "topEnd" x; the middle is black, and the map
  *             window is cut see-through while "holeWhen" is on ("hole", "holeInset", "holeRadius" as fill)
+ *   synth     effect layer (shaders.js synth): the Synthwave theme's whole backdrop: a dusk sky with stars, a striped sun
+ *             sitting on the horizon, two neon-edged mountain ranges and a perspective grid below it. "horizon" (y in the
+ *             layer, 470), "sunX" (the sun's centre and the grid's vanishing point, the layer's middle), "sunR" (sun radius px,
+ *             210); roles skyTop, skyLow, floor, sunA / sunB / sunC (the sun, top to bottom), grid, ridge, ridgeFill. The grid
+ *             scrolls with the speed ("idle": cells a second at a standstill, 0.12; "gain": more cells a second per km/h,
+ *             0.016; "idle": 0 and "gain": 0 keep it still). Opaque: it hides BMW's gauges under it, like fill.
  *   segbar    effect layer; "max" segments, the first round(signal) lit (e.g. "setupLevel:engine"), "slant" px
  *   icon      image layer; a line icon from icons.js ("icon": gauge, shock, wheel, cog, stack, therm, oilcan, fuel)
  *   arc also takes "start" and "sweep" in degrees (clockwise from 12 o'clock; negative = anticlockwise)
@@ -1820,6 +1826,14 @@ class HudApp {
             c.uniform(ref, 'u_color', rgba(color(t, w.color || 'bg')));
             c.uniform(ref, 'u_hole', this._hole(w));
             c.uniform(ref, 'u_holeR', [this._holeRadius(w)]);
+        } else if (w.type === 'synth') {
+            c.uniform(ref, 'u_size', [w.w, w.h]);
+            c.uniform(ref, 'u_hz', [isNum(w.horizon) ? w.horizon : 470]);
+            c.uniform(ref, 'u_sun', [isNum(w.sunX) ? w.sunX : w.w / 2, isNum(w.sunR) ? w.sunR : 210]);
+            c.uniform(ref, 'u_phase', [x.phase || 0]);
+            ['skyTop', 'skyLow', 'floor', 'sunA', 'sunB', 'sunC', 'grid', 'ridge', 'ridgeFill'].forEach((k) => {
+                c.uniform(ref, 'u_' + k, rgb(color(t, k)));
+            });
         } else if (w.type === 'box') {
             c.uniform(ref, 'u_size', [w.w, w.h]);
             c.uniform(ref, 'u_fill', rgba(color(t, w.fill || 'panel')));
@@ -1993,6 +2007,17 @@ class HudApp {
             if (!force && key === x.last) return;
             x.last = key; x.lastPaint = now;
             this._blitDiff(x, this._paintBadge(w, s, tone, fresh));
+        } else if (w.type === 'synth') {
+            // the grid runs towards the car: a phase of 0..1 per cell, moved by the speed (km/h) and sent about 8 times a
+            // second, only when it has moved. A rebuild (force) sends it as it is.
+            const dt = x.synthT ? Math.min(500, now - x.synthT) : 0;
+            if (!force && dt < 120) return;
+            x.synthT = now;
+            const kmh = this._raw('speed');
+            const rate = (isNum(w.idle) ? w.idle : 0.12) + (isNum(kmh) ? Math.max(0, kmh) : 0) * (isNum(w.gain) ? w.gain : 0.016);
+            x.phase = ((x.phase || 0) - rate * dt / 1000) % 1;
+            if (x.phase < 0) x.phase += 1;
+            x.c.uniform(x.ref, 'u_phase', [Math.round(x.phase * 1000) / 1000]);
         } else if (w.type === 'tiles') {
             // per tile: its bar (the slot's sensor, TILE_BAR) and whether that reading is over its warning limit
             const list = this._tiles(w), vals = [];

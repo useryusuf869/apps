@@ -39,6 +39,7 @@ const TYPES = {
     meter: ['signal', 'min', 'max'],
     gmeter: [],
     tiles: ['tiles'],
+    synth: [],
     revarc: ['center', 'r', 'start', 'sweep'],
 };
 const CLASSES = ['ambient', 'content', 'overlay', 'alert'];

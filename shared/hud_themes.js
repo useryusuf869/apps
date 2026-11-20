@@ -139,6 +139,22 @@ const THEMES = {
         ink: [12, 12, 14, 255], accent: [80, 255, 120, 255], well: [0, 0, 0, 255],
         green: [80, 255, 120, 255], ghost: [255, 170, 40, 40],
     },
+    // Synthwave (layout synthwave.json, Nov 20 2026): a neon dusk, after the cluster in sl0w.g26's G26 reel. The
+    // backdrop is one shader (skyTop .. ridgeFill below); cyan for the speed and the readouts, hot pink for the
+    // gear, violet for the small print. The roles after "well" are this theme's own.
+    synth: {
+        name: 'Synthwave',
+        fg: [120, 244, 255, 255], dim: [190, 150, 255, 255], track: [255, 255, 255, 46], arc: [0, 229, 255, 255],
+        glow: 0.7, stripe: false,
+        bar: { low: [0, 229, 255], mid: [255, 70, 210], high: [255, 42, 42], midAt: 'shift' },
+        rev: { from: [0, 229, 255], to: [255, 70, 210] },
+        bg: [0, 0, 0, 255], panel: [14, 0, 36, 255], line: [255, 70, 210, 255], head: [255, 70, 210, 255],
+        ink: [12, 12, 14, 255], accent: [255, 70, 210, 255], well: [0, 0, 0, 255],
+        cyan: [0, 229, 255, 255], pink: [255, 70, 210, 255], violet: [190, 150, 255, 255], gold: [255, 214, 10, 255],
+        skyTop: [6, 0, 24, 255], skyLow: [214, 30, 150, 255], floor: [22, 0, 48, 255],
+        sunA: [255, 236, 70, 255], sunB: [255, 134, 40, 255], sunC: [255, 40, 150, 255],
+        grid: [255, 70, 220, 255], ridge: [0, 229, 255, 255], ridgeFill: [34, 6, 78, 255],
+    },
     // Cruise (layouts cruise.json): calm and quiet for the highway, soft white and a cool teal, no reds until needed.
     cruise: {
         name: 'Cruise',

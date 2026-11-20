@@ -7,7 +7,7 @@ apps/<app>/hud/previews/<layout>.json = { big, small[, full]: {w, h, z} } (full:
 zlib-deflated RGBA rows (opaque). The build packs hud/ into hud.pack; previews.js inflates them.
 
     # the app's bench must be running (node bench/server.js <app>, BENCH_PORT=...)
-    uv run -q --with pillow python -I tools/previews.py cluster_themes 8078
+    uv run -q --with pillow python -I tools/previews.py cluster_themes 8078 [layout ...]
     ... idrive_hud_widgets 8079
 
 The bench's settings are put back afterwards. The raw shots are kept in ../design/previews-src/<app>/.
@@ -24,7 +24,8 @@ import zlib
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+CHROME = os.environ.get('CHROME') or '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+SANDBOX = ['--no-sandbox', '--disable-gpu-sandbox'] if hasattr(os, 'geteuid') and os.geteuid() == 0 else []   # headless Chrome as root needs this
 SKIP = {'off', 'grid', 'mapcal', 'wincal'}           # calibration layouts get no picture
 # the values every picture shows: 3rd gear at 4200 rpm, 61 mph, warm engine, a little boost, braking into a left turn
 SIGNALS = {'rpm': 4200, 'speed': 98, 'gear': 3, 'oil': 95, 'coolant': 90, 'boost': 1.1, 'torque': 290,
@@ -51,7 +52,7 @@ def shot(port, size, out):
         if os.path.exists(out):
             os.remove(out)           # a stale file would look like success
         try:
-            subprocess.run([CHROME, '--headless=new', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
+            subprocess.run([CHROME] + SANDBOX + ['--headless=new', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
                             '--virtual-time-budget=20000', '--hide-scrollbars', '--window-size=%d,%d' % size,
                             '--screenshot=' + out, 'http://localhost:%d/?only=1&backdrop=0&clean=1&car=0' % port],
                            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
@@ -76,6 +77,8 @@ def main():
     target = spec.get('config', {}).get('target', 'hud')
     sz = SIZES['panel' if target == 'panel' else 'hud']
     layouts = [o[0] for o in next(s for s in spec['settings'] if s['key'] == 'hudLayout')['options'] if o[0] not in SKIP]
+    if sys.argv[3:]:
+        layouts = [n for n in layouts if n in sys.argv[3:]]      # only these layouts (the other pictures stay as they are)
     data = os.path.join(ROOT, 'bench', '.data', app, 'settings.json')
     saved = json.load(open(data)) if os.path.exists(data) else {}
     defaults = {s['key']: s.get('default') for s in spec['settings']}
