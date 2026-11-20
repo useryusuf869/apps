@@ -12,7 +12,7 @@ box. The hub is a plain chrome cap, no marque. BMW's black gear box (x 1406-1597
 import json, math, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUTS = [os.path.join(ROOT, 'apps', a, 'hud', 'layouts', 'chrome.json') for a in ('cluster_themes', 'yusuf_dash')]
+OUTS = [os.path.join(ROOT, 'apps', 'yusuf_dash', 'hud', 'layouts', 'chrome.json')]
 W = []
 
 
