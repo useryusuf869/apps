@@ -1752,6 +1752,34 @@ class HudApp {
             c.uniform(ref, 'u_red', rgb(t.hot));
             c.uniform(ref, 'u_face', rgb(color(t, w.face || 'bg')));
             c.uniform(ref, 'u_hot', [0]);
+        } else if (w.type === 'chromedash') {
+            const us = this.setting('units') === 'us', r = (v) => v * Math.PI / 180;
+            const DD = Array.isArray(w.dials) ? w.dials.slice(0, 3) : [], dial = [], cfg = [], sA = [], nn = [], sg = [], val = [];
+            for (let i = 0; i < 3; i++) {
+                const g = DD[i];
+                if (!g) { dial.push(0, 0, 0, 0); cfg.push(0, 0, 0, 4); sA.push(0, 0, 0, 0); nn.push(0, 0, 2, 0); sg.push(0, 0, 0, 0); val.push(-1, -1, 0, 0); continue; }
+                const sp = g.kind === 'speed';
+                dial.push(g.cx - w.x, g.cy - w.y, g.R, g.ringW || 18);
+                cfg.push(g.hub || 40, g.disc || 0, isNum(g.cut) ? g.cut : 2, g.minor || 4);
+                sA.push(r(g.start), r(g.sweep), r(g.start2 || 0), r(g.sweep2 || 0));
+                nn.push(sp ? CHROME_SPEED[us ? 'us' : 'metric'].ticks : g.ticks || 4, g.ticks2 || 0, 2, g.sign ? g.sign[2] : 0);
+                sg.push(g.sign ? g.sign[0] : 0, g.sign ? g.sign[1] : 0, 0, 0);
+                val.push(0, g.kind === 'twin' ? 0 : -1, 0, 0);
+            }
+            c.uniform(ref, 'u_size', [w.w, w.h]);
+            c.uniform(ref, 'u_dial', dial, { type: 'vec4' });
+            c.uniform(ref, 'u_cfg', cfg, { type: 'vec4' });
+            c.uniform(ref, 'u_sA', sA, { type: 'vec4' });
+            c.uniform(ref, 'u_nn', nn, { type: 'vec4' });
+            c.uniform(ref, 'u_sg', sg, { type: 'vec4' });
+            c.uniform(ref, 'u_val', val, { type: 'vec4' });
+            c.uniform(ref, 'u_bg', rgb(color(t, 'bg')));
+            c.uniform(ref, 'u_chrome', rgb(color(t, 'chrome')));
+            c.uniform(ref, 'u_chrome2', rgb(color(t, 'chrome2')));
+            c.uniform(ref, 'u_face', rgb(color(t, 'panel')));
+            c.uniform(ref, 'u_tick', rgb(color(t, 'fg')));
+            c.uniform(ref, 'u_needle', rgb(color(t, 'chrome')));
+            c.uniform(ref, 'u_hot', rgb(t.hot));
         } else if (w.type === 'chromedial') {
             const us = this.setting('units') === 'us', k = w.kind || 'speed';
             const r = (v) => v * Math.PI / 180;
@@ -1883,6 +1911,20 @@ class HudApp {
             while (rs.length < 160) rs.push(0, 0, 0, 0);
             const bd = Array.isArray(w.band) ? w.band : [0, 0, 1, 1], dm = Array.isArray(w.dome) ? w.dome : [0, 0, 0, 0];
             c.uniform(ref, 'u_size', [w.w, w.h]);
+            // bounding boxes (layer px, grown by the glow's reach) so most pixels skip the edge loops: the panels, two for the rails
+            const grow = 40, pb = [];
+            CAP.forEach((cap, k) => {
+                const o = CAP.slice(0, k).reduce((a, b) => a + b, 0), xs = [], ys = [];
+                for (let i = 0; i < cnt[k]; i++) { xs.push(edges[(o + i) * 4]); ys.push(edges[(o + i) * 4 + 1]); }
+                pb.push(...(xs.length ? [Math.min(...xs) - grow, Math.min(...ys) - grow, Math.max(...xs) + grow, Math.max(...ys) + grow] : [1, 1, 0, 0]));
+            });
+            const rb = [[1e9, 1e9, -1e9, -1e9], [1e9, 1e9, -1e9, -1e9]];
+            (Array.isArray(w.rails) ? w.rails : []).forEach((pl, k) => {
+                const b = rb[Math.min(k, 1)];
+                (pl || []).forEach((q) => { b[0] = Math.min(b[0], q[0] - w.x - grow); b[1] = Math.min(b[1], q[1] - w.y - grow); b[2] = Math.max(b[2], q[0] - w.x + grow); b[3] = Math.max(b[3], q[1] - w.y + grow); });
+            });
+            c.uniform(ref, 'u_pb', pb, { type: 'vec4' });
+            c.uniform(ref, 'u_rb', rb[0].concat(rb[1]), { type: 'vec4' });
             c.uniform(ref, 'u_n', cnt);
             c.uniform(ref, 'u_e', edges, { type: 'vec4' });
             c.uniform(ref, 'u_rn', [nr]);
@@ -2232,6 +2274,30 @@ class HudApp {
             x.last = key;
             x.c.uniform(x.ref, 'u_value', [q]);
             x.c.uniform(x.ref, 'u_hot', [hot]);
+        } else if (w.type === 'chromedash') {
+            const us = this.setting('units') === 'us', DD = Array.isArray(w.dials) ? w.dials.slice(0, 3) : [];
+            const q = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1000) / 1000, val = [];
+            for (let i = 0; i < 3; i++) {
+                const g = DD[i];
+                if (!g) { val.push(-1, -1, 0, 0); continue; }
+                let a = 0, b = g.kind === 'twin' ? 0 : -1;
+                if (g.kind === 'speed') {
+                    const sp = this._raw('speed'), D = CHROME_SPEED[us ? 'us' : 'metric'];
+                    a = isNum(sp) ? q((us ? sp * 0.621371 : sp) / D.max) : 0;
+                } else if (g.kind === 'reserve') {
+                    const pw = this._raw('powerPct');
+                    a = isNum(pw) ? q(1 - pw / 100) : 1;
+                } else {
+                    const f = this._raw('fuel'), cl = this._raw('coolant');
+                    a = isNum(f) ? q(f) : 0;
+                    b = isNum(cl) ? q(1 - (cl - 40) / 90) : 1;
+                }
+                val.push(a, b, 0, 0);
+            }
+            const key = val.join(',');
+            if (!force && key === x.last) return;
+            x.last = key;
+            x.c.uniform(x.ref, 'u_val', val, { type: 'vec4' });
         } else if (w.type === 'chromedial') {
             const us = this.setting('units') === 'us', k = w.kind || 'speed';
             const q = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1000) / 1000;

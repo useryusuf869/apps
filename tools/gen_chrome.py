@@ -38,13 +38,14 @@ def at(cx, cy, theta, r):
     return cx + r * math.sin(a), cy - r * math.cos(a)
 
 
+DIALS = []
+
+
 def dial(id, cx, cy, R, **k):
-    add(id=id, type='chromedial', z=1, x=round(cx - R), y=round(cy - R), w=2 * R, h=2 * R, **{'class': 'content'}, **k)
+    """one gauge of the single full-screen chromedash layer (it also paints the opaque backdrop)"""
+    DIALS.append(dict(id=id, cx=cx, cy=cy, R=R, **k))
 
 
-
-# 1:1 after the photo: the three dials 420 / 350 / 350 px wide there (x 1.6 here), cut flat at the bottom, centres on one
-# line (the side dials 20 px lower), the speedometer in the middle of the panel.
 K = 1.6
 SX, SY, SR = 960, 356, 336
 dial('speedo', SX, SY, SR, kind='speed', start=-135, sweep=270, minor=4, ringW=19, hub=52, disc=0.42, cut=0.75,
@@ -74,6 +75,9 @@ for lab, th in (('E', -133), ('F', -52), ('H', 52), ('C', 137)):
 text('gear', RX, RY - RR * 0.58, '{{gear}}', 'c_gear', 'green', w=80)
 text('cl_time', RX - 36, RY + RR * 0.53, '{{time}}', 'c_txt', 'fg', w=150)
 text('cl_temp', RX - 36, RY + RR * 0.66, '{{coolant}}{{u:temp}}', 'c_txt', 'fg', w=150)
+
+add(id='chrome', type='chromedash', **{'class': 'content'}, z=1, x=0, y=0, w=1920, h=720, dials=DIALS)
+W.insert(0, W.pop())
 
 doc = {
     'schemaVersion': 2,

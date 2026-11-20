@@ -37,6 +37,7 @@ const TYPES = {
     atext: ['text', 'font'],
     dial: ['measure'],
     chromedial: [],
+    chromedash: [],
     meter: ['signal', 'min', 'max'],
     gmeter: [],
     tiles: ['tiles'],

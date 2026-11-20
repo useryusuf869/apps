@@ -1129,6 +1129,142 @@ void main() {
 }
 `;
 
+const CHROMEDASH = `// The Chrome theme in ONE cluster-render "effect" layer (the car draws only a few effect layers): an opaque near-black
+// backdrop (it hides BMW's own cluster) and up to three round chrome-bezel gauges, each with brushed chrome ring, white
+// bar ticks (major longer), slim needles, a dark textured disc and a plain chrome hub, cut flat at the bottom. Per gauge
+// (arrays indexed by the loop counter only, as GLSL ES 1.00 requires):
+//   u_dial  cx, cy, R, ringW (layer px)       u_cfg  hub, disc (fraction of R), cut (fraction of R below the centre), minor
+//   u_sA    startA, sweepA, startB, sweepB (radians clockwise from 12 o'clock; sweepB 0: none)
+//   u_nn    majors of A, of B, red from (fraction of A; above 1: none), speed-limit sign radius (fraction of R; 0: none)
+//   u_sg    sign x, y (fractions of R from the centre)      u_val  needle values 0..1 of A, B (< 0: no needle)
+precision mediump float;
+varying vec2 v_uv;
+uniform vec2 u_size;
+uniform vec4 u_dial[3];
+uniform vec4 u_cfg[3];
+uniform vec4 u_sA[3];
+uniform vec4 u_nn[3];
+uniform vec4 u_sg[3];
+uniform vec4 u_val[3];
+uniform vec3 u_bg;
+uniform vec3 u_chrome;
+uniform vec3 u_chrome2;
+uniform vec3 u_face;
+uniform vec3 u_tick;
+uniform vec3 u_needle;
+uniform vec3 u_hot;
+
+const float PI = 3.14159265359;
+
+vec3 ticks(vec3 col, vec2 p, float a, float start, float sweep, float n, float minor, float tr, float red) {
+    if (sweep <= 0.0 || n <= 0.0) return col;
+    float rel = mod(a - start + 4.0 * PI, 2.0 * PI);
+    float steps = n * minor;
+    float k = floor(rel / sweep * steps + 0.5);
+    if (k < 0.0 || k > steps) return col;
+    float ta = start + k / steps * sweep;
+    vec2 dir = vec2(sin(ta), cos(ta));
+    bool major = mod(k, minor) < 0.5;
+    float len = major ? tr * 0.075 : tr * 0.05;
+    float wid = major ? tr * 0.0125 : tr * 0.0085;
+    vec2 pa = p - dir * (tr - len);
+    vec2 ba = dir * len;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    float dd = length(pa - ba * h) - wid;
+    float c = clamp(0.5 - dd, 0.0, 1.0);
+    vec3 tc = (red <= 1.0 && k / steps >= red - 0.001) ? u_hot : u_tick;
+    return mix(col, tc, c);
+}
+
+vec3 needle(vec3 col, vec2 p, float start, float sweep, float v, float L) {
+    if (v < 0.0 || sweep <= 0.0) return col;
+    float na = start + clamp(v, 0.0, 1.0) * sweep;
+    vec2 nd = vec2(sin(na), cos(na));
+    vec2 q = vec2(dot(p, vec2(nd.y, -nd.x)), dot(p, nd));
+    if (q.y > 0.0 && q.y < L) {
+        float w = mix(L * 0.016, L * 0.005, clamp(q.y / L, 0.0, 1.0));
+        float c = clamp(w + 0.5 - abs(q.x), 0.0, 1.0);
+        float shine = 0.75 + 0.25 * clamp(q.x / w + 0.5, 0.0, 1.0);
+        col = mix(col, u_needle * shine, c);
+    }
+    return col;
+}
+
+void main() {
+    vec2 px = v_uv * u_size;
+    vec3 outc = u_bg;
+    for (int i = 0; i < 3; i++) {
+        vec4 D = u_dial[i];
+        vec4 C = u_cfg[i];
+        vec2 p = vec2(px.x - D.x, D.y - px.y);
+        float R = D.z;
+        float d = length(p);
+        if (D.z > 0.0 && d <= R + 0.5 && p.y >= -C.z * R) {
+            float edge = clamp(R + 0.5 - d, 0.0, 1.0);
+            float rin = R - D.w;
+            float a = atan(p.x, p.y);
+            vec3 col = u_face;
+            if (d > rin) {
+                float t = (d - rin) / D.w;
+                float prof = 0.55 + 0.45 * exp(-pow((t - 0.42) * 3.0, 2.0));
+                float refl = 0.78 + 0.22 * cos(a + 0.75)
+                           + 0.55 * pow(max(cos(a + 0.75), 0.0), 14.0)
+                           + 0.45 * pow(max(cos(a - 2.35), 0.0), 10.0)
+                           - 0.45 * pow(max(cos(a - 0.6), 0.0), 6.0) - 0.4 * pow(max(cos(a + 2.2), 0.0), 8.0);
+                vec3 ring = mix(u_chrome2, vec3(1.0), clamp(prof * refl, 0.0, 1.0));
+                ring = mix(ring, vec3(1.0), smoothstep(0.80, 0.9, t) * (1.0 - smoothstep(0.9, 1.0, t)) * 0.7);
+                ring *= 0.35 + 0.65 * smoothstep(0.0, 0.1, t) * (0.55 + 0.45 * smoothstep(1.0, 0.92, t));
+                float lip = clamp(1.0 - t * D.w / 2.0, 0.0, 1.0);
+                ring = mix(ring, vec3(1.0), lip * 0.55);
+                col = ring;
+            } else {
+                col *= 0.55 + 0.7 * smoothstep(rin, 0.0, d);
+                col *= 0.6 + 0.4 * smoothstep(rin, rin * 0.82, d);
+                float dr = C.y * R;
+                if (d < dr) {
+                    float n = 0.5 + 0.5 * sin(p.x * 1.7) * sin(p.y * 1.7);
+                    vec3 dc = vec3(0.075, 0.08, 0.09) + vec3(0.03) * n;
+                    dc *= 0.7 + 0.5 * smoothstep(dr, 0.0, d);
+                    col = mix(dc, col, smoothstep(dr - 2.0, dr, d) * 0.9);
+                }
+                float tr = rin * 0.965;
+                vec4 S = u_sA[i];
+                vec4 N = u_nn[i];
+                col = ticks(col, p, a, S.x, S.y, N.x, C.w, tr, N.z);
+                col = ticks(col, p, a, S.z, S.w, N.y, C.w, tr, 2.0);
+                if (N.w > 0.0) {
+                    vec4 G = u_sg[i];
+                    vec2 sp = p - vec2(G.x, -G.y) * R;
+                    float sd = length(sp);
+                    float sr = N.w * R;
+                    if (sd < sr) {
+                        col = vec3(0.86, 0.1, 0.1);
+                        if (sd < sr * 0.74) { col = vec3(0.95); if (abs(sp.y) < sr * 0.07 && abs(sp.x) < sr * 0.5) col = vec3(0.5); }
+                    }
+                }
+                float L = tr - rin * 0.075;
+                vec4 V = u_val[i];
+                col = needle(col, p, S.x, S.y, V.x, L);
+                col = needle(col, p, S.z, S.w, V.y, L);
+                float hr = C.x;
+                if (d < hr * 1.18) col = mix(col, vec3(0.02), 0.9);
+                if (d < hr) {
+                    vec2 n2 = p / hr;
+                    float h = clamp(0.5 - 0.5 * dot(n2, normalize(vec2(-0.6, 0.8))), 0.0, 1.0);
+                    float rings = 0.5 + 0.5 * sin(d * 2.2);
+                    vec3 c = mix(u_chrome2, vec3(1.0), clamp(0.25 + 0.65 * (1.0 - h) + 0.08 * rings, 0.0, 1.0));
+                    if (d < hr * 0.78) c = mix(vec3(0.04, 0.04, 0.05), vec3(0.16), clamp(0.5 - n2.y * 0.5, 0.0, 1.0));
+                    c = mix(c, vec3(1.0), clamp(1.0 - (hr - d) / 1.5, 0.0, 1.0) * 0.5);
+                    col = c;
+                }
+            }
+            outc = mix(outc, col, edge);
+        }
+    }
+    gl_FragColor = vec4(outc, 1.0);
+}
+`;
+
 const METER = `// A segmented bar meter for a cluster-render "effect" layer (GLSL ES 1.00): u_segs segments along the layer's
 // width (or its height when u_vertical is 1, filling upward), the first u_value of the way lit. A lit segment takes
 // u_c1 below u_at.x of the bar, u_c2 up to u_at.y, u_c3 from there (the retro green / amber / red, or warm-up blue /
@@ -1415,7 +1551,7 @@ const LAMBO_PANELS = [16, 16, 8, 8];
 function lamboSource() {
     let off = 0, fn = '';
     LAMBO_PANELS.forEach((n, k) => {
-        fn += 'float poly' + k + '(vec2 p) {\n    float d = 1.0e4; float s = 1.0;\n';
+        fn += 'float poly' + k + '(vec2 p) {\n    if (p.x < u_pb[' + k + '].x || p.y < u_pb[' + k + '].y || p.x > u_pb[' + k + '].z || p.y > u_pb[' + k + '].w) return 1.0e3;\n    float d = 1.0e4; float s = 1.0;\n';
         for (let i = 0; i < n; i++) {
             const e = 'u_e[' + (off + i) + ']';
             fn += '    if (' + i + '.0 < u_n[' + k + ']) { vec2 a = ' + e + '.xy, b = ' + e + '.zw; d = min(d, segd(p, a, b));' +
@@ -1442,6 +1578,8 @@ varying vec2 v_uv;
 uniform vec2 u_size;
 uniform vec4 u_n;
 uniform vec4 u_e[48];
+uniform vec4 u_pb[4];     // bounding box of each panel (layer px, grown by the glow): outside it the edge loop is skipped
+uniform vec4 u_rb[2];     // bounding boxes of the two rails
 uniform float u_rn;
 uniform vec4 u_rs[40];
 uniform vec4 u_band;
@@ -1489,10 +1627,14 @@ void main() {
 
     // the rails
     float rd = 1.0e4;
-    for (int i = 0; i < 40; i++) {
-        if (float(i) >= u_rn) break;
-        vec4 s = u_rs[i];
-        rd = min(rd, segd(p, s.xy, s.zw));
+    bool nearRail = (p.x >= u_rb[0].x && p.y >= u_rb[0].y && p.x <= u_rb[0].z && p.y <= u_rb[0].w)
+                 || (p.x >= u_rb[1].x && p.y >= u_rb[1].y && p.x <= u_rb[1].z && p.y <= u_rb[1].w);
+    if (nearRail) {
+        for (int i = 0; i < 40; i++) {
+            if (float(i) >= u_rn) break;
+            vec4 s = u_rs[i];
+            rd = min(rd, segd(p, s.xy, s.zw));
+        }
     }
     col += u_glow * 0.5 * exp(-rd * 0.30) * step(rd, 30.0);
     col = mix(col, u_line, (1.0 - smoothstep(1.8, 3.4, rd)) * step(rd, 6.0));
@@ -1762,4 +1904,4 @@ void main() {
 }
 `;
 
-module.exports = { chromedial: CHROMEDIAL, shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO, lamboarc: LAMBOARC };
+module.exports = { chromedash: CHROMEDASH, chromedial: CHROMEDIAL, shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO, lamboarc: LAMBOARC };
