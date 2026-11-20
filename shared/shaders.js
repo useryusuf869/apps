@@ -998,6 +998,111 @@ void main() {
 }
 `;
 
+const CHROMEDIAL = `// A round chrome-bezel gauge (the "chrome" theme): a brushed chrome ring with a bright lip, a dark face with a soft
+// radial sheen, white bar ticks (major longer), slim polished needles and a neutral chrome hub. Two scales per dial:
+// u_s = (startA, sweepA, startB, sweepB) in radians clockwise from 12 o'clock (sweepB 0: none), u_n = major steps
+// of A / B, u_minor minor steps per major, u_v = needle values 0..1 of A / B (< 0: no needle), u_red 0..1 of scale A
+// from where the ticks turn red (above 1: none). The numbers are text widgets. v_uv (0,0) is the top-left.
+precision mediump float;
+varying vec2 v_uv;
+uniform vec2 u_size;
+uniform vec4 u_s;
+uniform vec2 u_n;
+uniform vec2 u_v;
+uniform float u_minor;
+uniform float u_ringW;
+uniform float u_red;
+uniform float u_hub;
+uniform vec3 u_chrome;
+uniform vec3 u_chrome2;
+uniform vec3 u_face;
+uniform vec3 u_tick;
+uniform vec3 u_needle;
+uniform vec3 u_hot;
+
+const float PI = 3.14159265359;
+
+float seg(vec2 p, vec2 a, vec2 b) {
+    vec2 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h);
+}
+
+// tick marks of one scale
+vec3 ticks(vec3 col, vec2 p, float d, float a, float start, float sweep, float n, float tr, float red) {
+    if (sweep <= 0.0) return col;
+    float rel = mod(a - start + 4.0 * PI, 2.0 * PI);
+    float steps = n * u_minor;
+    float k = floor(rel / sweep * steps + 0.5);
+    if (k < 0.0 || k > steps) return col;
+    float ta = start + k / steps * sweep;
+    vec2 dir = vec2(sin(ta), cos(ta));
+    bool major = mod(k, u_minor) < 0.5;
+    float len = major ? tr * 0.115 : tr * 0.06, wid = major ? tr * 0.012 : tr * 0.006;
+    float dd = seg(p, dir * (tr - len), dir * tr) - wid;
+    float c = clamp(0.5 - dd, 0.0, 1.0);
+    vec3 tc = (red <= 1.0 && k / steps >= red - 0.001) ? u_hot : u_tick;
+    return mix(col, tc, c);
+}
+
+// one slim needle
+vec3 needle(vec3 col, vec2 p, float start, float sweep, float v, float L) {
+    if (v < 0.0 || sweep <= 0.0) return col;
+    float na = start + clamp(v, 0.0, 1.0) * sweep;
+    vec2 nd = vec2(sin(na), cos(na));
+    vec2 q = vec2(dot(p, vec2(nd.y, -nd.x)), dot(p, nd));
+    if (q.y > -0.16 * L && q.y < L) {
+        float w = mix(L * 0.022, L * 0.006, clamp(q.y / L, 0.0, 1.0));
+        float c = clamp(w + 0.5 - abs(q.x), 0.0, 1.0);
+        float shine = 0.75 + 0.25 * clamp(q.x / w + 0.5, 0.0, 1.0);
+        col = mix(col, u_needle * shine, c);
+    }
+    return col;
+}
+
+void main() {
+    vec2 p = vec2(v_uv.x - 0.5, 0.5 - v_uv.y) * u_size;
+    float R = min(u_size.x, u_size.y) * 0.5 - 1.0;
+    float d = length(p);
+    if (d > R + 0.5) { gl_FragColor = vec4(0.0); return; }
+    float edge = clamp(R + 0.5 - d, 0.0, 1.0);
+    float rin = R - u_ringW;
+    float a = atan(p.x, p.y);
+    vec3 col = u_face;
+    if (d > rin) {
+        // brushed chrome: bright top-left, dark bands, a lip at the inner edge
+        float t = (d - rin) / u_ringW;
+        float band = 0.5 + 0.5 * sin(a * 3.0 + 0.8) ;
+        float sheen = clamp(0.5 - 0.5 * dot(p / d, normalize(vec2(-0.6, 0.8))), 0.0, 1.0);
+        vec3 ring = mix(u_chrome2, u_chrome, clamp(0.25 + 0.55 * sheen + 0.25 * band, 0.0, 1.0));
+        ring *= 0.85 + 0.3 * sin(t * PI);                       // a rounded section
+        float lip = clamp(1.0 - (d - rin) / 2.5, 0.0, 1.0);
+        float rim = clamp(1.0 - (R - d) / 2.0, 0.0, 1.0);
+        ring = mix(ring, vec3(1.0), lip * 0.5 + rim * 0.25);
+        gl_FragColor = vec4(ring, edge);
+        return;
+    }
+    // dark face with a soft sheen toward the top, a faint inner shadow under the bezel
+    col *= 0.7 + 0.6 * clamp(0.5 + p.y / (2.0 * rin), 0.0, 1.0);
+    col *= 0.55 + 0.45 * smoothstep(rin, rin - rin * 0.18, d);
+    float tr = rin - rin * 0.07;
+    col = ticks(col, p, d, a, u_s.x, u_s.y, u_n.x, tr, u_red);
+    col = ticks(col, p, d, a, u_s.z, u_s.w, u_n.y, tr, 2.0);
+    float L = tr - rin * 0.1;
+    col = needle(col, p, u_s.x, u_s.y, u_v.x, L);
+    col = needle(col, p, u_s.z, u_s.w, u_v.y, L);
+    // the hub: a plain chrome cap (no marque)
+    float hr = u_hub;
+    if (d < hr) {
+        float h = clamp(0.5 - 0.5 * dot(p / max(d, 0.001), normalize(vec2(-0.6, 0.8))), 0.0, 1.0);
+        vec3 c = mix(u_chrome2, u_chrome, 0.35 + 0.6 * (1.0 - h) * clamp(1.0 - d / hr, 0.0, 1.0) + 0.3 * (1.0 - h));
+        c = mix(c, vec3(1.0), clamp(1.0 - (hr - d) / 2.0, 0.0, 1.0) * 0.4);
+        col = c;
+    }
+    gl_FragColor = vec4(col, edge);
+}
+`;
+
 const METER = `// A segmented bar meter for a cluster-render "effect" layer (GLSL ES 1.00): u_segs segments along the layer's
 // width (or its height when u_vertical is 1, filling upward), the first u_value of the way lit. A lit segment takes
 // u_c1 below u_at.x of the bar, u_c2 up to u_at.y, u_c3 from there (the retro green / amber / red, or warm-up blue /
@@ -1604,4 +1709,4 @@ void main() {
 }
 `;
 
-module.exports = { shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO, lamboarc: LAMBOARC };
+module.exports = { chromedial: CHROMEDIAL, shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO, lamboarc: LAMBOARC };

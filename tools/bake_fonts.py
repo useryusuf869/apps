@@ -110,6 +110,12 @@ CLUSTER_FONTS = [
     ('l_badge', 'Orbitron[wght].ttf', 46, UPPER + LOWER + DIGITS + ' -', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.85),
     ('l_big', 'Orbitron[wght].ttf', 40, UPPER + DIGITS + ' -/.:%', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.8),
     ('l_gears', 'Orbitron[wght].ttf', 66, DIGITS, 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.9),
+    # Chrome: classic upright sans for the dial numbers and the small readouts
+    ('c_num', 'BarlowSemiCondensed-SemiBold.ttf', 44, DIGITS, 0),
+    ('c_numL', 'BarlowSemiCondensed-SemiBold.ttf', 58, DIGITS, 0),
+    ('c_txt', 'Barlow-Medium.ttf', 30, UPPER + LOWER + DIGITS + ' -/.:%\u00b0>'),
+    ('c_small', 'Barlow-Medium.ttf', 22, UPPER + LOWER + DIGITS + ' -/.:%\u00b0'),
+    ('c_gear', 'BarlowSemiCondensed-SemiBold.ttf', 52, 'PRND' + DIGITS),
 ]
 FONTS = {'idrive_hud_widgets': HUD_FONTS, 'cluster_themes': CLUSTER_FONTS}
 PAD = 2

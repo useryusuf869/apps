@@ -244,6 +244,8 @@ const TARGET_SIZES = { hud: [800, 480], panel: [1920, 720] };
 const MODE_KEY = { comfort: 'inComfort', sport: 'inSport', eco: 'inEco' };
 const TYRE_CORNERS = ['FL', 'FR', 'RL', 'RR'];
 // the Roadster's speed dial: 0..160 mph or 0..240 km/h in 8 steps (labels {{dial:speed:<i>}})
+// the chrome theme's speedometer: 0..260 km/h or 0..160 mph in steps of 20 (labels {{cdial:<i>}})
+const CHROME_SPEED = { us: { max: 160, ticks: 8 }, metric: { max: 260, ticks: 13 } };
 const DIAL_SPEED = { us: { max: 160, ticks: 8 }, metric: { max: 240, ticks: 8 } };
 // the HUD's place (the page's Position tab): settings that move / scale the layers already there, no rebuild
 const PLACE_KEYS = ['hudX', 'hudY', 'hudScale', 'stripClear'];
@@ -1301,6 +1303,10 @@ class HudApp {
         }
         if (tok.indexOf('tyreP:') === 0) { const v = this._tyre('p', tok.slice(6)); return isNum(v) ? (us ? fix(v * 14.5038, 0) : fix(v, 1)) : '--'; }
         if (tok.indexOf('tyreT:') === 0) { const v = this._tyre('t', tok.slice(6)); return isNum(v) ? String(Math.round(us ? v * 9 / 5 + 32 : v)) : '--'; }
+        if (tok.indexOf('cdial:') === 0) {       // the chrome speedometer's label i: CHROME_SPEED's steps, blank past its last one
+            const D = CHROME_SPEED[us ? 'us' : 'metric'], i = Number(tok.slice(6));
+            return i > D.ticks ? '' : String(Math.round(D.max / D.ticks * i));
+        }
         if (tok.indexOf('dial:speed:') === 0) {     // a speed dial's label i ({{dial:speed:<i>}}): DIAL_SPEED's steps
             const D = DIAL_SPEED[us ? 'us' : 'metric'];
             return String(Math.round(D.max / D.ticks * Number(tok.slice(11))));
@@ -1746,6 +1752,26 @@ class HudApp {
             c.uniform(ref, 'u_red', rgb(t.hot));
             c.uniform(ref, 'u_face', rgb(color(t, w.face || 'bg')));
             c.uniform(ref, 'u_hot', [0]);
+        } else if (w.type === 'chromedial') {
+            const us = this.setting('units') === 'us', k = w.kind || 'speed';
+            const r = (v) => v * Math.PI / 180;
+            let S = [r(w.start === undefined ? -140 : w.start), r(w.sweep === undefined ? 280 : w.sweep), 0, 0], N = [w.ticks || 8, 0];
+            if (k === 'speed') N = [CHROME_SPEED[us ? 'us' : 'metric'].ticks, 0];
+            if (k === 'twin') { S = [r(w.start), r(w.sweep), r(w.start2), r(w.sweep2)]; N = [w.ticks || 4, w.ticks2 || 4]; }
+            c.uniform(ref, 'u_size', [w.w, w.h]);
+            c.uniform(ref, 'u_s', S);
+            c.uniform(ref, 'u_n', N);
+            c.uniform(ref, 'u_v', [0, k === 'twin' ? 0 : -1]);
+            c.uniform(ref, 'u_minor', [w.minor || 4]);
+            c.uniform(ref, 'u_ringW', [w.ringW || 18]);
+            c.uniform(ref, 'u_red', [isNum(w.redFrom) ? w.redFrom : 2]);
+            c.uniform(ref, 'u_hub', [w.hub || 16]);
+            c.uniform(ref, 'u_chrome', rgb(color(t, w.chrome || 'chrome')));
+            c.uniform(ref, 'u_chrome2', rgb(color(t, w.chrome2 || 'chrome2')));
+            c.uniform(ref, 'u_face', rgb(color(t, w.face || 'bg')));
+            c.uniform(ref, 'u_tick', rgb(color(t, w.tick || 'fg')));
+            c.uniform(ref, 'u_needle', rgb(color(t, w.needle || 'chrome')));
+            c.uniform(ref, 'u_hot', rgb(t.hot));
         } else if (w.type === 'gmeter') {
             const L = color(t, w.line || 'dim');
             c.uniform(ref, 'u_size', [w.w, w.h]);
@@ -2177,6 +2203,25 @@ class HudApp {
             x.last = key;
             x.c.uniform(x.ref, 'u_value', [q]);
             x.c.uniform(x.ref, 'u_hot', [hot]);
+        } else if (w.type === 'chromedial') {
+            const us = this.setting('units') === 'us', k = w.kind || 'speed';
+            const q = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1000) / 1000;
+            let a = 0, b = k === 'twin' ? 0 : -1;
+            if (k === 'speed') {
+                const sp = this._raw('speed'), D = CHROME_SPEED[us ? 'us' : 'metric'];
+                a = isNum(sp) ? q((us ? sp * 0.621371 : sp) / D.max) : 0;
+            } else if (k === 'reserve') {
+                const pw = this._raw('powerPct');
+                a = isNum(pw) ? q(1 - pw / 100) : 1;
+            } else {       // twin: A = fuel (0..1), B = coolant 40..130
+                const f = this._raw('fuel'), cl = this._raw('coolant');
+                a = isNum(f) ? q(f) : 0;
+                b = isNum(cl) ? q((cl - 40) / 90) : 0;
+            }
+            const key = a + '|' + b;
+            if (!force && key === x.last) return;
+            x.last = key;
+            x.c.uniform(x.ref, 'u_v', [a, b]);
         } else if (w.type === 'sdash') {
             const us = this.setting('units') === 'us';
             const sp = this._raw('speed'), rpm = this._raw('rpm'), fuel = this._raw('fuel'), oil = this._raw('oil');

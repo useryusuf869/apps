@@ -25,7 +25,7 @@ mgu.run({
         hud.start();
         new Page(ctx, hud, {
             title: ctx.spec.title, what: 'cluster',
-            look: { name: 'Themes', style: 'hero', tags: { gt3: 'Renn-Dash', m: 'M8-Stil', sport: 'Live Cockpit', minimal: 'nur das Tempo', roadster: 'Rundinstrumente', track: 'Reifen + Temp.', drag: '0-100-Timer', rally: 'Drehzahlbogen · G-Meter', retro80s: '80er digital', synthwave: 'Neon-Sonnenuntergang', lambo: 'Lambo x BMW', cruise: 'ruhig · Fahrt', dyno: 'Überwachungs-Kacheln' } },
+            look: { name: 'Themes', style: 'hero', tags: { gt3: 'Renn-Dash', m: 'M8-Stil', sport: 'Live Cockpit', minimal: 'nur das Tempo', roadster: 'Rundinstrumente', track: 'Reifen + Temp.', drag: '0-100-Timer', rally: 'Drehzahlbogen · G-Meter', retro80s: '80er digital', synthwave: 'Neon-Sonnenuntergang', lambo: 'Lambo x BMW', chrome: 'Chrom-Rundinstrumente', cruise: 'ruhig · Fahrt', dyno: 'Überwachungs-Kacheln' } },
             tabs: ['look', 'readouts', 'badge', 'map', 'alerts', 'gmeter', 'settings'],
             settings: ['units', 'clock', 'timeZone', 'tankLitres', 'redline', 'shiftBefore', 'coldGuard', 'showBoost', 'nightDim', 'stripClear', 'demo'],
         }).start();

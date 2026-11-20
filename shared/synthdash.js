@@ -201,6 +201,8 @@ class SynthDash {
             this.vitals(cv, d);
             this.scenePanel(cv, d, dt, back);
             this.radar(cv, now);
+        } else if (this.get('dashStyle') === 'chrome') {
+            this.chrome(cv, d, back);
         } else {
             this.lambo(cv, d, back);
         }
@@ -209,12 +211,103 @@ class SynthDash {
 
     /** the little switch between the two looks, bottom middle */
     styleButton(cv) {
-        const lam = this.get('dashStyle') !== 'synthwave', bx = PB.x + PB.w - 146, by = PB.y + PB.h - 44;
-        const col = lam ? '#28a0ff' : C.cyan;
+        const st = this.get('dashStyle'), bx = PB.x + PB.w - 146, by = PB.y + PB.h - 44;
+        const col = st === 'synthwave' ? C.cyan : st === 'chrome' ? '#e4e4de' : '#28a0ff';
+        const name = st === 'synthwave' ? 'SYNTHWAVE' : st === 'chrome' ? 'CHROM' : 'LAMBO';
+        const nxt = st === 'synthwave' ? 'chrome' : st === 'chrome' ? 'lambo' : 'synthwave';
         cv.roundRect(bx, by, 132, 32, 8, withAlpha('#000000', 0.55));
         cv.strokeRoundRect(bx, by, 132, 32, 8, 1.5, withAlpha(col, 0.8));
-        T(cv, 'STIL: ' + (lam ? 'LAMBO' : 'SYNTHWAVE'), bx + 66, by + 22, 14, col, { font: 'bold', spacing: 0.5, align: 'center' });
-        if (cv.target) cv.target(bx, by, 132, 32, () => this.setting('dashStyle', lam ? 'synthwave' : 'lambo'), 'dash-style', 8);
+        T(cv, 'STIL: ' + name, bx + 66, by + 22, 14, col, { font: 'bold', spacing: 0.5, align: 'center' });
+        if (cv.target) cv.target(bx, by, 132, 32, () => this.setting('dashStyle', nxt), 'dash-style', 8);
+    }
+
+    /**
+     * Chrom: three round analogue dials with brushed chrome bezels, white bar ticks and slim needles (the cluster's
+     * "Chrom" theme): left the power reserve (full at idle) with the oil temperature, middle the speedometer with the
+     * range, right fuel (E-F) and coolant (C-H) with the clock and the gear. The faces are cached layers.
+     */
+    chrome(cv, d, back) {
+        const mph = this.mph(), V = (k) => (isNum(k) ? (mph ? k / MPH : k) : null);
+        cv.fillRect(0, 0, 1600, 520, '#08080a');
+        cv.gradientRect && cv.gradientRect(0, 0, 1600, 520, '#14141a', '#050506');
+        const rad = (a) => a * Math.PI / 180;
+        const pt = (cx, cy, a, r) => [cx + r * Math.sin(rad(a)), cy - r * Math.cos(rad(a))];
+        const needle = (cx, cy, a, len) => {
+            const tip = pt(cx, cy, a, len), tail = pt(cx, cy, a + 180, len * 0.16);
+            const l = pt(cx, cy, a - 90, 4.2), r = pt(cx, cy, a + 90, 4.2);
+            fillPoly(cv, [l, tip, r, tail], '#ecece8');
+            cv.line(cx, cy, tip[0], tip[1], 1.5, '#ffffff');
+        };
+        const dial = (cx, cy, R, key, spec) => {
+            const layer = G.layer('chrome-' + key + (mph ? 'm' : 'k'), 2 * R, 2 * R, (c) => {
+                const o = R, bw = Math.round(R * 0.085), rin = R - bw;
+                for (let a = 0; a < 360; a += 4) {                      // the brushed bezel: bright top-left, dark bands
+                    const t = 0.5 + 0.5 * Math.cos(rad(a - 315)), b = 0.5 + 0.5 * Math.sin(rad(a * 3 + 40));
+                    c.arc(o, o, rin, R - 1, a, a + 4.5, lerpHex('#4c4c50', '#f4f4f0', clamp(0.2 + 0.6 * t + 0.2 * b, 0, 1)));
+                }
+                c.arc(o, o, rin, rin + 2, 0, 360, '#ffffff');
+                c.arc(o, o, 0, rin, 0, 360, '#0b0b0d');
+                c.arc(o, o, rin * 0.62, rin, 0, 360, withAlpha('#000000', 0.25));
+                const tr = rin * 0.93;
+                spec.scales.forEach((sc) => {
+                    const steps = sc.n * sc.minor;
+                    for (let k = 0; k <= steps; k++) {
+                        const a = sc.start + k * sc.sweep / steps, major = k % sc.minor === 0;
+                        const p0 = pt(o, o, a, tr - (major ? tr * 0.115 : tr * 0.06)), p1 = pt(o, o, a, tr);
+                        c.line(p0[0], p0[1], p1[0], p1[1], major ? R * 0.012 + 1 : R * 0.006 + 1, '#f0f0ec');
+                    }
+                    (sc.labels || []).forEach((lb, i) => {
+                        const q = pt(o, o, sc.start + i * sc.sweep / (sc.labels.length - 1), tr * (sc.lr || 0.72));
+                        T(c, lb, q[0], q[1] + spec.size * 0.35, spec.size, '#f0f0ec', { font: 'num', align: 'center' });
+                    });
+                });
+            });
+            cv.blit(layer, cx - R, cy - R);
+        };
+        const hub = (cx, cy, r) => {
+            cv.arc(cx, cy, 0, r, 0, 360, '#9a9a98');
+            cv.arc(cx, cy, 0, r * 0.7, 0, 360, '#dcdcd8');
+            cv.arc(cx, cy, r, r + 1.5, 0, 360, '#ffffff');
+        };
+        const lab = (s, x, y, size, col, al) => T(cv, s, x, y, size, col || '#a8a8a4', { font: 'bold', align: al || 'center', spacing: 0.5 });
+
+        // middle: speedometer 0-260 km/h (0-160 mph)
+        const SX = 800, SY = 280, SR = 232, mx = mph ? 160 : 260, nn = mph ? 8 : 13;
+        const labs = []; for (let i = 0; i <= nn; i++) labs.push(String(Math.round(mx / nn * i)));
+        dial(SX, SY, SR, 'speed', { size: 28, scales: [{ start: -140, sweep: 280, n: nn, minor: 4, labels: labs, lr: 0.73 }] });
+        const sp = isNum(d.speed) ? clamp(V(d.speed) / mx, 0, 1) : 0;
+        needle(SX, SY, -140 + sp * 280, SR * 0.8);
+        hub(SX, SY, 16);
+        lab(mph ? 'MPH' : 'KM/H', SX, SY + 78, 18);
+        lab(isNum(d.range) ? Math.round(V(d.range)) + (mph ? ' MI' : ' KM') : '-', SX, SY + 140, 22, '#f0f0ec');
+
+        // left: power reserve 0-100
+        const LX = 290, LY = 290, LR = 168, pw = isNum(d.powerPct) ? clamp(d.powerPct, 0, 100) : 0;
+        dial(LX, LY, LR, 'reserve', { size: 22, scales: [{ start: -140, sweep: 230, n: 5, minor: 4, labels: ['0', '20', '40', '60', '80', '100'], lr: 0.63 }] });
+        needle(LX, LY, -140 + (1 - pw / 100) * 230, LR * 0.8);
+        hub(LX, LY, 12);
+        lab('POWER', LX, LY + 56, 14);
+        lab('OIL ' + fmt(temp(d.oil, mph), 0) + (mph ? '°F' : '°C'), LX, LY + 100, 17, '#f0f0ec');
+
+        // right: fuel E-F (left half) and coolant C-H (right half), clock and gear
+        const RX = 1310, RY = 290, RR = 168, fu = isNum(d.fuel) ? clamp(d.fuel, 0, 1) : 0;
+        const cl = isNum(d.coolant) ? clamp((d.coolant - 40) / 90, 0, 1) : 0;
+        dial(RX, RY, RR, 'fuel', { size: 22, scales: [{ start: -150, sweep: 100, n: 4, minor: 2 }, { start: 50, sweep: 100, n: 4, minor: 2 }] });
+        [['E', -150], ['F', -50], ['C', 50], ['H', 150]].forEach((e) => { const q = pt(RX, RY, e[1], RR * 0.6); lab(e[0], q[0], q[1] + 7, 20, '#f0f0ec'); });
+        needle(RX, RY, -150 + fu * 100, RR * 0.78);
+        needle(RX, RY, 50 + cl * 100, RR * 0.78);
+        hub(RX, RY, 11);
+        lab('FUEL', RX - 40, RY - 20, 13); lab('TEMP', RX + 40, RY - 20, 13);
+        const now = new Date(), hh = (now.getHours() < 10 ? '0' : '') + now.getHours(), mm = (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
+        lab(hh + ':' + mm, RX, RY + 52, 20, '#f0f0ec');
+        const g = isNum(d.gear) ? (d.gear > 0 ? 'D' + d.gear : d.gear === 0 ? 'N' : 'R') : 'D';
+        cv.roundRect(RX - 30, RY + 76, 60, 40, 5, '#3cc46e');
+        T(cv, g, RX, RY + 106, 28, '#0c0c0e', { font: 'bold', align: 'center' });
+        const bx = PB.x + 14, by = PB.y + PB.h - 44;
+        cv.roundRect(bx, by, 132, 32, 8, withAlpha('#000000', 0.55));
+        cv.strokeRoundRect(bx, by, 132, 32, 8, 1.5, withAlpha('#e4e4de', 0.8));
+        T(cv, '<  ZURÜCK', bx + 66, by + 22, 14, '#e4e4de', { font: 'bold', spacing: 0.5, align: 'center' });
+        if (cv.target && back) cv.target(bx, by, 132, 32, back, 'dash-back', 8);
     }
 
     lambo(cv, d, back) {

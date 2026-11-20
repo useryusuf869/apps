@@ -168,6 +168,18 @@ const THEMES = {
         hex: [140, 160, 190, 255], glow3: [150, 190, 255, 255], sep: [150, 160, 172, 255], trk: [104, 106, 110, 255], pale: [200, 214, 218, 255], stripe1: [60, 196, 255, 255],
         blue: [30, 156, 232, 255], mblue: [24, 72, 190, 255], red: [255, 40, 40, 255], orange: [255, 150, 30, 255], white: [244, 247, 252, 255],
     },
+    // Chrome (layouts chrome.json): three round analogue dials with brushed chrome bezels, white bar ticks, slim needles
+    // on a near-black face; classic luxury-saloon instruments. Roles chrome / chrome2 are the bezel's light / dark metal.
+    chrome: {
+        name: 'Chrom',
+        fg: [240, 240, 236, 255], dim: [150, 150, 148, 255], track: [255, 255, 255, 50], arc: [220, 220, 216, 255],
+        glow: 0, stripe: false,
+        bar: { low: [220, 220, 216], mid: [240, 200, 120], high: [230, 50, 40], midAt: 'shift' },
+        rev: { from: [220, 220, 216], to: [230, 50, 40] },
+        bg: [10, 10, 12, 255], panel: [20, 20, 24, 255], line: [236, 236, 232, 255], head: [200, 200, 196, 255],
+        ink: [12, 12, 14, 255], accent: [220, 220, 216, 255], well: [0, 0, 0, 255],
+        chrome: [226, 226, 222, 255], chrome2: [70, 70, 74, 255], green: [70, 200, 110, 255],
+    },
     // Cruise (layouts cruise.json): calm and quiet for the highway, soft white and a cool teal, no reds until needed.
     cruise: {
         name: 'Cruise',

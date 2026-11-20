@@ -149,6 +149,10 @@
           "Lambo"
         ],
         [
+          "chrome",
+          "Chrom"
+        ],
+        [
           "cruise",
           "Cruise"
         ],
@@ -227,6 +231,10 @@
           "Lambo"
         ],
         [
+          "chrome",
+          "Chrom"
+        ],
+        [
           "cruise",
           "Cruise"
         ],
@@ -291,6 +299,10 @@
           "Lambo"
         ],
         [
+          "chrome",
+          "Chrom"
+        ],
+        [
           "cruise",
           "Cruise"
         ],
@@ -353,6 +365,10 @@
         [
           "lambo",
           "Lambo"
+        ],
+        [
+          "chrome",
+          "Chrom"
         ],
         [
           "cruise",
@@ -1025,6 +1041,10 @@
         [
           "synthwave",
           "Synthwave"
+        ],
+        [
+          "chrome",
+          "Chrom"
         ]
       ]
     }
