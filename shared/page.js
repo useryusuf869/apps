@@ -25,6 +25,7 @@ const sensors = require('./sensors');
 const visible = require('./visible');
 const badges = require('./badges');
 const tz = require('./tz');
+const { SynthDash } = require('./synthdash');
 
 const W = 1600, H = 520;
 const A = G.withAlpha;
@@ -34,6 +35,7 @@ const C = {
 };
 const RAIL = { x: 16, y: 54, w: 252, h: 66, gap: 8 };
 const RAIL7 = { x: 16, y: 54, w: 252, h: 58, gap: 6 };     // seven tabs or more: a little shorter, so they fit
+const RAIL8 = { x: 16, y: 54, w: 252, h: 50, gap: 5 };      // eight tabs: shorter again
 const CX = 300, CR = 1584, CW = CR - CX;
 const MODES = [['inComfort', 'Comfort'], ['inSport', 'Sport'], ['inEco', 'Eco Pro']];
 const MODE_KEY = { comfort: 'inComfort', sport: 'inSport', eco: 'inEco' };
@@ -45,6 +47,7 @@ const TAB = {
     badge: { name: 'Schriftzug', icon: 'badge' },
     alerts: { name: 'Warnungen', icon: 'alert' },
     gmeter: { name: 'G-meter', icon: 'gmeter' },
+    dash: { name: 'Synthwave Dash', icon: 'screen' },
     colours: { name: 'Farben', icon: 'colour' },
     settings: { name: 'Einstellungen', icon: 'cog' },
 };
@@ -56,6 +59,7 @@ class Page {
     constructor(ctx, hud, cfg) {
         this.ctx = ctx; this.hud = hud; this.cfg = cfg;
         this.tab = cfg.tabs[0];
+        if (cfg.tabs.indexOf('dash') >= 0 && hud.car) this.dash = new SynthDash(hud.car, (k) => this.get(k));
         this.picker = null;              // { key, title } while a list of choices is open over the page
         this.loop = null;
         this.slotLayout = null;          // Readouts: the layout whose slots are edited (null: the one showing)
@@ -150,6 +154,12 @@ class Page {
         // the page under an open list takes no taps: the list (and a tap beside it to close) does
         const target = cv.target;
         if (this.picker || this.confirm) cv.target = function () { return this; };
+        if (this.tab === 'dash' && this.dash) {
+            // the dash takes the whole centre screen; its back button returns to the first tab
+            if (!this.picker && !this.confirm) this.dash.draw(cv, () => { this.tab = this.cfg.tabs[0]; this.kick(); });
+            cv.target = target;
+            return this.ctx.ui.image('MAIN_GFX', cv);
+        }
         this.rail(cv, bottom);
         const body = { look: this.lookTab, readouts: this.readoutsTab, position: this.positionTab, map: this.mapTab, colours: this.coloursTab, badge: this.badgeTab, alerts: this.alertsTab, gmeter: this.gmeterTab, settings: this.settingsTab }[this.tab];
         if (body) body.call(this, cv, bottom);
@@ -162,7 +172,7 @@ class Page {
 
     rail(cv, bottom) {
         cv.fillRect(RAIL.x + RAIL.w + 15, 50, 1, bottom - 56, C.line);
-        const R = this.cfg.tabs.length > 6 ? RAIL7 : RAIL, dy = (66 - R.h) / 2;
+        const R = this.cfg.tabs.length > 7 ? RAIL8 : this.cfg.tabs.length > 6 ? RAIL7 : RAIL, dy = (66 - R.h) / 2;
         this.cfg.tabs.forEach((id, i) => {
             const x = R.x, y = R.y + i * (R.h + R.gap), w = R.w, h = R.h, sel = id === this.tab;
             if (sel) {
@@ -188,6 +198,7 @@ class Page {
         if (id === 'badge') return badges.text(this.get('badge'), this.get('badgeBMW') === true) || 'keiner';
         if (id === 'alerts') { const n = WARN_KEYS.filter((k) => this.get(k) > 0).length; return n ? n + (n > 1 ? ' Warnungen an' : ' Warnung an') : 'Warnungen aus'; }
         if (id === 'gmeter') return this.optLabel('gRange', this.get('gRange')) + ' · Spur ' + this.optLabel('gTrail', this.get('gTrail'));
+        if (id === 'dash') return 'Mittelbildschirm · 3 Panels';
         if (id === 'colours') return this.valueText('hudTheme').replace(/ \(.*\)$/, '');
         if (id === 'settings') return (this.get('units') === 'metric' ? 'km/h' : 'mph') + ' · ' + fmtInt(this.get('redline')) + ' U/min';
         return '';
