@@ -98,8 +98,8 @@ CLUSTER_FONTS = [
     ('w_val', 'Orbitron[wght].ttf', 44, DIGITS + ':+-.\u00b0', 0, 'Bold', {'0': 'O'}, '\u00b0'),
     ('w_label', 'Orbitron[wght].ttf', 22, UPPER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}),
     # Lambo: wide oblique Orbitron after konsti_m440i's reel; the gear and the rev numbers are outlines (hollow)
-    ('l_gear', 'Orbitron[wght].ttf', 190, DIGITS + 'PRND-', 0, 'Black', {'0': 'O'}, '', 9, 0.2),
-    ('l_speed', 'Orbitron[wght].ttf', 104, DIGITS + '-', 3, 'Black', {'0': 'O'}, '', 0, 0.2, 0.92),
+    ('l_gear', 'Orbitron[wght].ttf', 190, '12345678NRP', 0, 'Black', {'0': 'O'}, '', 9, 0.2, 0.8),
+    ('l_speed', 'Orbitron[wght].ttf', 104, DIGITS + '-', 3, 'Black', {'0': 'O'}, '', 0, 0.2, 0.8),
     ('l_num', 'Orbitron[wght].ttf', 40, DIGITS, 0, 'Bold', {'0': 'O'}, '', 3, 0.2, 0.9),
     ('l_val', 'Orbitron[wght].ttf', 44, DIGITS + ':+-.\u00b0', 0, 'Bold', {'0': 'O'}, '\u00b0', 0, 0.2, 0.82),
     ('l_tyre', 'Orbitron[wght].ttf', 42, DIGITS + '.', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.9),
@@ -107,7 +107,7 @@ CLUSTER_FONTS = [
     ('l_label', 'Orbitron[wght].ttf', 20, UPPER + LOWER + DIGITS + ' -/.:%\u00b0\u00d8', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.8),
     ('l_head', 'Orbitron[wght].ttf', 26, UPPER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.8),
     ('l_trip', 'Orbitron[wght].ttf', 50, DIGITS + ':.-', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.8),
-    ('l_badge', 'Orbitron[wght].ttf', 46, UPPER + LOWER + DIGITS + ' -', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.85),
+    ('l_badge', 'Orbitron[wght].ttf', 46, UPPER + 'idesxrv' + DIGITS + ' -', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.85),
     ('l_big', 'Orbitron[wght].ttf', 40, UPPER + DIGITS + ' -/.:%', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.8),
     ('l_gears', 'Orbitron[wght].ttf', 66, DIGITS, 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.9),
     # Chrome: classic upright sans for the dial numbers and the small readouts

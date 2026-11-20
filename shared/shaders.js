@@ -1446,6 +1446,11 @@ uniform float u_rn;
 uniform vec4 u_rs[40];
 uniform vec4 u_band;
 uniform vec4 u_dome;
+uniform vec4 u_bars[6];   // segmented bars: x, y, w, h (layer px)
+uniform vec4 u_bs[6];     // each: segments, value 0..1, gap px, unused
+uniform vec3 u_trk;
+uniform vec4 u_rules[8];  // flat rectangles: x, y, w, h (layer px)
+uniform vec4 u_rcol[8];   // their colours (rgb)
 uniform vec4 u_logo;
 uniform vec3 u_bg;
 uniform vec3 u_hex;
@@ -1505,6 +1510,28 @@ void main() {
         col = mix(col, u_line, edge * step(d, 4.0));
     }
 
+    // flat rules and stripes
+    for (int ri = 0; ri < 8; ri++) {
+        vec4 rr = u_rules[ri];
+        if (rr.z > 0.0 && p.x >= rr.x && p.x < rr.x + rr.z && p.y >= rr.y && p.y < rr.y + rr.w) col = u_rcol[ri].rgb;
+    }
+    // the readout bars (oil, intake, power, torque, fuel, coolant): segments lit up to the value, in this shader so the
+    // car draws no more effect layers than the theme's frame and arc
+    for (int bi = 0; bi < 6; bi++) {
+        vec4 bb = u_bars[bi];
+        vec4 bs = u_bs[bi];
+        if (bs.x > 0.0 && p.x >= bb.x && p.x < bb.x + bb.z && p.y >= bb.y && p.y < bb.y + bb.w) {
+            float slot = (bb.z + bs.z) / bs.x;
+            float x = p.x - bb.x;
+            float k = floor(x / slot);
+            float fx = x - k * slot;
+            float ba = clamp(fx + 0.5, 0.0, 1.0) * clamp(slot - bs.z - fx + 0.5, 0.0, 1.0);
+            if (k < bs.x && ba > 0.0) {
+                float lit = (bs.y > 0.0 && (k + 0.5) / bs.x <= bs.y + 0.5 / bs.x) ? 1.0 : 0.0;
+                col = mix(col, mix(u_trk, u_blue, lit), ba);
+            }
+        }
+    }
     // the dome
     vec2 dq = (p - u_dome.xy) / u_dome.zw;
     float inDome = (1.0 - smoothstep(0.96, 1.0, length(dq))) * step(dq.y, 0.0) * step(-1.0, dq.y);

@@ -28,7 +28,7 @@ def text(id, x, y, t, font, color='fg', align='center', w=120, **extra):
     if align == 'left':
         w = min(w, 1920 - x)
     left = x if align == 'left' else x - w / 2 if align == 'center' else x - w
-    d = dict(id=id, type='text', z=5, x=round(left), y=round(y - h / 2), w=w, h=h, text=t, font=font, color=color, align=align)
+    d = dict(id=id, type='text', z=5, conn=0, x=round(left), y=round(y - h / 2), w=w, h=h, text=t, font=font, color=color, align=align)
     d.update(extra)
     add(**d)
 
@@ -42,7 +42,6 @@ def dial(id, cx, cy, R, **k):
     add(id=id, type='chromedial', z=1, x=round(cx - R), y=round(cy - R), w=2 * R, h=2 * R, **{'class': 'content'}, **k)
 
 
-add(id='bg', type='fill', **{'class': 'content'}, z=0, x=0, y=0, w=1920, h=720, color='bg')
 
 # 1:1 after the photo: the three dials 420 / 350 / 350 px wide there (x 1.6 here), cut flat at the bottom, centres on one
 # line (the side dials 20 px lower), the speedometer in the middle of the panel.
@@ -72,8 +71,7 @@ dial('fuelc', RX, RY, RR, kind='twin', start=-135, sweep=90, start2=45, sweep2=9
 for lab, th in (('E', -133), ('F', -52), ('H', 52), ('C', 137)):
     x, y = at(RX, RY, th, RR * 0.60)
     text('fl_' + lab, x, y, lab, 'c_txt', 'fg', w=40)
-add(id='gear_box', type='fill', **{'class': 'content'}, z=3, x=RX - 30, y=round(RY - RR * 0.58 - 21), w=60, h=42, color='green')
-text('gear', RX, RY - RR * 0.58, '{{gear}}', 'c_gear', 'ink', w=60)
+text('gear', RX, RY - RR * 0.58, '{{gear}}', 'c_gear', 'green', w=80)
 text('cl_time', RX - 36, RY + RR * 0.53, '{{time}}', 'c_txt', 'fg', w=150)
 text('cl_temp', RX - 36, RY + RR * 0.66, '{{coolant}}{{u:temp}}', 'c_txt', 'fg', w=150)
 

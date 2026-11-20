@@ -1897,6 +1897,23 @@ class HudApp {
             c.uniform(ref, 'u_line', rgb(color(t, 'line')));
             c.uniform(ref, 'u_glow', rgb(color(t, 'glow3')));
             c.uniform(ref, 'u_blue', rgb(color(t, 'blue')));
+            c.uniform(ref, 'u_trk', rgb(color(t, 'trk')));
+            const B = Array.isArray(w.bars) ? w.bars.slice(0, 6) : [], bx = [], bs = [];
+            for (let i = 0; i < 6; i++) {
+                const b = B[i];
+                bx.push(...(b ? [b.x - w.x, b.y - w.y, b.w, b.h] : [0, 0, 0, 0]));
+                bs.push(...(b ? [b.segments || 40, 0, isNum(b.gap) ? b.gap : 1.5, 0] : [0, 0, 0, 0]));
+            }
+            const Q = Array.isArray(w.rules) ? w.rules.slice(0, 8) : [], rx = [], rc = [];
+            for (let i = 0; i < 8; i++) {
+                const q = Q[i], cc = q ? rgb(color(t, q.color || 'fg')) : [0, 0, 0];
+                rx.push(...(q ? [q.x - w.x, q.y - w.y, q.w, q.h] : [0, 0, 0, 0]));
+                rc.push(cc[0], cc[1], cc[2], 1);
+            }
+            c.uniform(ref, 'u_rules', rx, { type: 'vec4' });
+            c.uniform(ref, 'u_rcol', rc, { type: 'vec4' });
+            c.uniform(ref, 'u_bars', bx, { type: 'vec4' });
+            c.uniform(ref, 'u_bs', bs, { type: 'vec4' });
         } else if (w.type === 'lamboarc') {
             const max = this._barMax();
             c.uniform(ref, 'u_size', [w.w, w.h]);
@@ -2093,12 +2110,21 @@ class HudApp {
             x.last = key; x.lastPaint = now;
             this._blitDiff(x, this._paintBadge(w, s, tone, fresh));
         } else if (w.type === 'lambo') {
-            // the M stripes follow the badge: only an M model shows them
+            // the M stripes follow the badge (only an M model shows them); the readout bars follow their signals
             const on = this._isMBadge();
-            if (!force && x.mOn === on) return;
-            x.mOn = on;
+            const B = Array.isArray(w.bars) ? w.bars.slice(0, 6) : [];
+            const vals = B.map((b) => {
+                const v = this._raw(b.signal), lo = isNum(b.min) ? b.min : 0, hi = isNum(b.max) ? b.max : 1;
+                return isNum(v) ? Math.round(Math.min(1, Math.max(0, (v - lo) / (hi - lo))) * (b.segments || 40)) / (b.segments || 40) : 0;
+            });
+            const key = on + '|' + vals.join(',');
+            if (!force && x.lamboKey === key) return;
+            x.lamboKey = key;
             const lg = Array.isArray(w.logo) && on ? w.logo : [0, 0, 0, 0];
             x.c.uniform(x.ref, 'u_logo', [lg[0] - w.x, lg[1] - w.y, lg[2], lg[3]]);
+            const bs = [];
+            for (let i = 0; i < 6; i++) { const b = B[i]; bs.push(...(b ? [b.segments || 40, vals[i], isNum(b.gap) ? b.gap : 1.5, 0] : [0, 0, 0, 0])); }
+            x.c.uniform(x.ref, 'u_bs', bs, { type: 'vec4' });
         } else if (w.type === 'synth') {
             // the grid runs towards the car: a phase of 0..1 per cell, moved by the speed (km/h) and sent about 8 times a
             // second, only when it has moved. A rebuild (force) sends it as it is.

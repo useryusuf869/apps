@@ -98,47 +98,11 @@
       "key": "hudLayout",
       "label": "Theme (wenn nicht nach Fahrmodus)",
       "type": "choice",
-      "default": "gt3",
+      "default": "lambo",
       "options": [
         [
           "off",
           "Aus (BMW-Tacho original)"
-        ],
-        [
-          "gt3",
-          "GT3"
-        ],
-        [
-          "m",
-          "M"
-        ],
-        [
-          "sport",
-          "Sport"
-        ],
-        [
-          "minimal",
-          "Minimal"
-        ],
-        [
-          "roadster",
-          "Roadster"
-        ],
-        [
-          "track",
-          "Track"
-        ],
-        [
-          "drag",
-          "Drag"
-        ],
-        [
-          "rally",
-          "Rally"
-        ],
-        [
-          "retro80s",
-          "Retro 80s"
         ],
         [
           "synthwave",
@@ -151,14 +115,6 @@
         [
           "chrome",
           "Chrom"
-        ],
-        [
-          "cruise",
-          "Cruise"
-        ],
-        [
-          "dyno",
-          "Dyno"
         ],
         [
           "grid",
@@ -187,42 +143,6 @@
           "Aus (BMW-Tacho original)"
         ],
         [
-          "gt3",
-          "GT3"
-        ],
-        [
-          "m",
-          "M"
-        ],
-        [
-          "sport",
-          "Sport"
-        ],
-        [
-          "minimal",
-          "Minimal"
-        ],
-        [
-          "roadster",
-          "Roadster"
-        ],
-        [
-          "track",
-          "Track"
-        ],
-        [
-          "drag",
-          "Drag"
-        ],
-        [
-          "rally",
-          "Rally"
-        ],
-        [
-          "retro80s",
-          "Retro 80s"
-        ],
-        [
           "synthwave",
           "Synthwave"
         ],
@@ -233,14 +153,6 @@
         [
           "chrome",
           "Chrom"
-        ],
-        [
-          "cruise",
-          "Cruise"
-        ],
-        [
-          "dyno",
-          "Dyno"
         ]
       ]
     },
@@ -248,47 +160,11 @@
       "key": "inSport",
       "label": "In Sport",
       "type": "choice",
-      "default": "gt3",
+      "default": "lambo",
       "options": [
         [
           "off",
           "Aus (BMW-Tacho original)"
-        ],
-        [
-          "gt3",
-          "GT3"
-        ],
-        [
-          "m",
-          "M"
-        ],
-        [
-          "sport",
-          "Sport"
-        ],
-        [
-          "minimal",
-          "Minimal"
-        ],
-        [
-          "roadster",
-          "Roadster"
-        ],
-        [
-          "track",
-          "Track"
-        ],
-        [
-          "drag",
-          "Drag"
-        ],
-        [
-          "rally",
-          "Rally"
-        ],
-        [
-          "retro80s",
-          "Retro 80s"
         ],
         [
           "synthwave",
@@ -301,14 +177,6 @@
         [
           "chrome",
           "Chrom"
-        ],
-        [
-          "cruise",
-          "Cruise"
-        ],
-        [
-          "dyno",
-          "Dyno"
         ]
       ]
     },
@@ -323,42 +191,6 @@
           "Aus (BMW-Tacho original)"
         ],
         [
-          "gt3",
-          "GT3"
-        ],
-        [
-          "m",
-          "M"
-        ],
-        [
-          "sport",
-          "Sport"
-        ],
-        [
-          "minimal",
-          "Minimal"
-        ],
-        [
-          "roadster",
-          "Roadster"
-        ],
-        [
-          "track",
-          "Track"
-        ],
-        [
-          "drag",
-          "Drag"
-        ],
-        [
-          "rally",
-          "Rally"
-        ],
-        [
-          "retro80s",
-          "Retro 80s"
-        ],
-        [
           "synthwave",
           "Synthwave"
         ],
@@ -369,14 +201,6 @@
         [
           "chrome",
           "Chrom"
-        ],
-        [
-          "cruise",
-          "Cruise"
-        ],
-        [
-          "dyno",
-          "Dyno"
         ]
       ]
     },
