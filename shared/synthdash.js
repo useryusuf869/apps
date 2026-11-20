@@ -229,80 +229,93 @@ class SynthDash {
     chrome(cv, d, back) {
         const mph = this.mph(), V = (k) => (isNum(k) ? (mph ? k / MPH : k) : null);
         cv.fillRect(0, 0, 1600, 520, '#08080a');
-        cv.gradientRect && cv.gradientRect(0, 0, 1600, 520, '#14141a', '#050506');
         const rad = (a) => a * Math.PI / 180;
         const pt = (cx, cy, a, r) => [cx + r * Math.sin(rad(a)), cy - r * Math.cos(rad(a))];
-        const needle = (cx, cy, a, len) => {
-            const tip = pt(cx, cy, a, len), tail = pt(cx, cy, a + 180, len * 0.16);
-            const l = pt(cx, cy, a - 90, 4.2), r = pt(cx, cy, a + 90, 4.2);
-            fillPoly(cv, [l, tip, r, tail], '#ecece8');
-            cv.line(cx, cy, tip[0], tip[1], 1.5, '#ffffff');
+        const CUT = 0.75, EDGE = 180 - Math.asin(CUT) * 180 / Math.PI + 0;      // the ring ends where the cut meets it
+        const A1 = 180 - (Math.acos(CUT) * 180 / Math.PI) + 0;                    // 138.6 degrees either side of the top
+        const needle = (cx, cy, a, len, hr) => {
+            const tip = pt(cx, cy, a, len), base = pt(cx, cy, a, hr);
+            const l = pt(base[0], base[1], a - 90, 3.4), r = pt(base[0], base[1], a + 90, 3.4);
+            fillPoly(cv, [l, tip, r], '#f2f2ee');
         };
         const dial = (cx, cy, R, key, spec) => {
-            const layer = G.layer('chrome-' + key + (mph ? 'm' : 'k'), 2 * R, 2 * R, (c) => {
-                const o = R, bw = Math.round(R * 0.085), rin = R - bw;
-                for (let a = 0; a < 360; a += 4) {                      // the brushed bezel: bright top-left, dark bands
-                    const t = 0.5 + 0.5 * Math.cos(rad(a - 315)), b = 0.5 + 0.5 * Math.sin(rad(a * 3 + 40));
-                    c.arc(o, o, rin, R - 1, a, a + 4.5, lerpHex('#4c4c50', '#f4f4f0', clamp(0.2 + 0.6 * t + 0.2 * b, 0, 1)));
+            const layer = G.layer('chrome2-' + key + (mph ? 'm' : 'k'), 2 * R, 2 * R, (c) => {
+                const o = R, bw = Math.max(8, Math.round(R * 0.057)), rin = R - bw;
+                // the glossy chrome tube: dark outer edge, bright body with sharp reflections, white lip inside
+                for (let a = -A1; a < A1; a += 2) {
+                    const lam = (v, e) => Math.pow(Math.max(Math.cos(rad(a + v)), 0), e);
+                    const refl = clamp(0.78 + 0.22 * Math.cos(rad(a + 43)) + 0.55 * lam(43, 14) + 0.45 * Math.cos(rad(a - 135)) * 0 + 0.45 * lam(-135, 10) - 0.45 * lam(-34, 6) - 0.4 * lam(126, 8), 0, 1.3);
+                    const body = lerpHex('#58585c', '#ffffff', clamp(0.55 * refl + 0.2, 0, 1));
+                    c.arc(o, o, rin, R - 1, a, a + 2.4, lerpHex('#1a1a1c', body, 0.6));
+                    c.arc(o, o, rin + bw * 0.18, R - bw * 0.35, a, a + 2.4, body);
+                    c.arc(o, o, R - bw * 0.2, R, a, a + 2.4, lerpHex('#8a8a8e', '#ffffff', clamp(refl, 0, 1)));
+                    c.arc(o, o, rin, rin + 2, a, a + 2.4, '#ffffff');
                 }
-                c.arc(o, o, rin, rin + 2, 0, 360, '#ffffff');
-                c.arc(o, o, 0, rin, 0, 360, '#0b0b0d');
-                c.arc(o, o, rin * 0.62, rin, 0, 360, withAlpha('#000000', 0.25));
-                const tr = rin * 0.93;
+                // the dark face (a sector plus the triangle to the cut) and the textured disc behind the hub
+                const xr = Math.sqrt(rin * rin - CUT * R * CUT * R);
+                c.arc(o, o, 0, rin, -A1, A1, '#0a0a0c');
+                fillPoly(c, [[o, o], [o - xr, o + CUT * R], [o + xr, o + CUT * R]], '#0a0a0c');
+                c.arc(o, o, 0, rin * 0.46 / 0.943, 0, 360, '#15171a');
+                const tr = rin * 0.965;
                 spec.scales.forEach((sc) => {
                     const steps = sc.n * sc.minor;
                     for (let k = 0; k <= steps; k++) {
                         const a = sc.start + k * sc.sweep / steps, major = k % sc.minor === 0;
-                        const p0 = pt(o, o, a, tr - (major ? tr * 0.115 : tr * 0.06)), p1 = pt(o, o, a, tr);
-                        c.line(p0[0], p0[1], p1[0], p1[1], major ? R * 0.012 + 1 : R * 0.006 + 1, '#f0f0ec');
+                        const p0 = pt(o, o, a, tr - tr * (major ? 0.075 : 0.05)), p1 = pt(o, o, a, tr);
+                        c.line(p0[0], p0[1], p1[0], p1[1], major ? R * 0.026 : R * 0.017, '#f4f4f0');
                     }
                     (sc.labels || []).forEach((lb, i) => {
-                        const q = pt(o, o, sc.start + i * sc.sweep / (sc.labels.length - 1), tr * (sc.lr || 0.72));
-                        T(c, lb, q[0], q[1] + spec.size * 0.35, spec.size, '#f0f0ec', { font: 'num', align: 'center' });
+                        const q = pt(o, o, sc.start + i * sc.sweep / (sc.labels.length - 1), R * sc.lr);
+                        T(c, lb, q[0], q[1] + spec.size * 0.35, spec.size, '#f4f4f0', { font: 'num', align: 'center' });
                     });
                 });
+                if (spec.sign) {                                          // speed-limit sign, no limit known
+                    const q = [o + spec.sign[0] * R, o + spec.sign[1] * R], sr = spec.sign[2] * R;
+                    c.arc(q[0], q[1], 0, sr, 0, 360, '#d81c1c'); c.arc(q[0], q[1], 0, sr * 0.74, 0, 360, '#f2f2f2');
+                    c.line(q[0] - sr * 0.45, q[1], q[0] + sr * 0.45, q[1], 2, '#808080');
+                }
             });
             cv.blit(layer, cx - R, cy - R);
         };
         const hub = (cx, cy, r) => {
-            cv.arc(cx, cy, 0, r, 0, 360, '#9a9a98');
-            cv.arc(cx, cy, 0, r * 0.7, 0, 360, '#dcdcd8');
-            cv.arc(cx, cy, r, r + 1.5, 0, 360, '#ffffff');
+            cv.arc(cx, cy, 0, r * 1.18, 0, 360, '#050506');
+            cv.arc(cx, cy, 0, r, 0, 360, '#c4c4c2');
+            cv.arc(cx, cy, 0, r * 0.78, 0, 360, '#1b1b1d');
+            cv.arc(cx, cy, r, r + 1.2, 0, 360, '#ffffff');
         };
-        const lab = (s, x, y, size, col, al) => T(cv, s, x, y, size, col || '#a8a8a4', { font: 'bold', align: al || 'center', spacing: 0.5 });
+        const lab = (str, x, y, size, col, al) => T(cv, str, x, y, size, col || '#f4f4f0', { font: 'bold', align: al || 'center', spacing: 0.4 });
 
-        // middle: speedometer 0-260 km/h (0-160 mph)
-        const SX = 800, SY = 280, SR = 232, mx = mph ? 160 : 260, nn = mph ? 8 : 13;
+        // middle: speedometer 0-260 km/h (0-160 mph), 0 at the lower left as in the photo
+        const SX = 800, SY = 250, SR = 232, mx = mph ? 160 : 260, nn = mph ? 8 : 13;
         const labs = []; for (let i = 0; i <= nn; i++) labs.push(String(Math.round(mx / nn * i)));
-        dial(SX, SY, SR, 'speed', { size: 28, scales: [{ start: -140, sweep: 280, n: nn, minor: 4, labels: labs, lr: 0.73 }] });
+        dial(SX, SY, SR, 'speed', { size: 26, scales: [{ start: -135, sweep: 270, n: nn, minor: 4, labels: labs, lr: 0.715 }], sign: [0.395, 0.095, 0.095] });
         const sp = isNum(d.speed) ? clamp(V(d.speed) / mx, 0, 1) : 0;
-        needle(SX, SY, -140 + sp * 280, SR * 0.8);
-        hub(SX, SY, 16);
-        lab(mph ? 'MPH' : 'KM/H', SX, SY + 78, 18);
-        lab(isNum(d.range) ? Math.round(V(d.range)) + (mph ? ' MI' : ' KM') : '-', SX, SY + 140, 22, '#f0f0ec');
+        needle(SX, SY, -135 + sp * 270, SR * 0.86, 36);
+        hub(SX, SY, 36);
+        lab(mph ? 'MPH' : 'KM/H', SX, SY - SR * 0.6 + 6, 15);
+        lab(isNum(d.range) ? Math.round(V(d.range)) + (mph ? ' MI' : ' KM') : '-', SX, SY + SR * 0.55 + 7, 19);
 
-        // left: power reserve 0-100
-        const LX = 290, LY = 290, LR = 168, pw = isNum(d.powerPct) ? clamp(d.powerPct, 0, 100) : 0;
-        dial(LX, LY, LR, 'reserve', { size: 22, scales: [{ start: -140, sweep: 230, n: 5, minor: 4, labels: ['0', '20', '40', '60', '80', '100'], lr: 0.63 }] });
-        needle(LX, LY, -140 + (1 - pw / 100) * 230, LR * 0.8);
-        hub(LX, LY, 12);
-        lab('POWER', LX, LY + 56, 14);
-        lab('OIL ' + fmt(temp(d.oil, mph), 0) + (mph ? '°F' : '°C'), LX, LY + 100, 17, '#f0f0ec');
+        // left: power reserve 0-100, the needle at 100 when idle
+        const LX = 356, LY = 264, LR = 193, pw = isNum(d.powerPct) ? clamp(d.powerPct, 0, 100) : 0;
+        dial(LX, LY, LR, 'reserve', { size: 22, scales: [{ start: -110, sweep: 200, n: 5, minor: 4, labels: ['0', '20', '40', '60', '80', '100'], lr: 0.62 }] });
+        needle(LX, LY, -110 + (1 - pw / 100) * 200, LR * 0.86, 34);
+        hub(LX, LY, 34);
+        lab('OIL ' + fmt(temp(d.oil, mph), 0) + (mph ? '°F' : '°C'), LX, LY + LR * 0.6 + 6, 17);
 
-        // right: fuel E-F (left half) and coolant C-H (right half), clock and gear
-        const RX = 1310, RY = 290, RR = 168, fu = isNum(d.fuel) ? clamp(d.fuel, 0, 1) : 0;
+        // right: fuel E-F (left) and coolant H-C (right), the gear on top, clock and coolant underneath
+        const RX = 1244, RY = 264, RR = 193, fu = isNum(d.fuel) ? clamp(d.fuel, 0, 1) : 0;
         const cl = isNum(d.coolant) ? clamp((d.coolant - 40) / 90, 0, 1) : 0;
-        dial(RX, RY, RR, 'fuel', { size: 22, scales: [{ start: -150, sweep: 100, n: 4, minor: 2 }, { start: 50, sweep: 100, n: 4, minor: 2 }] });
-        [['E', -150], ['F', -50], ['C', 50], ['H', 150]].forEach((e) => { const q = pt(RX, RY, e[1], RR * 0.6); lab(e[0], q[0], q[1] + 7, 20, '#f0f0ec'); });
-        needle(RX, RY, -150 + fu * 100, RR * 0.78);
-        needle(RX, RY, 50 + cl * 100, RR * 0.78);
-        hub(RX, RY, 11);
-        lab('FUEL', RX - 40, RY - 20, 13); lab('TEMP', RX + 40, RY - 20, 13);
+        dial(RX, RY, RR, 'fuel', { size: 22, scales: [{ start: -135, sweep: 90, n: 4, minor: 4 }, { start: 45, sweep: 90, n: 4, minor: 4 }] });
+        [['E', -133], ['F', -52], ['H', 52], ['C', 137]].forEach((e) => { const q = pt(RX, RY, e[1], RR * 0.6); lab(e[0], q[0], q[1] + 7, 20); });
+        needle(RX, RY, -135 + fu * 90, RR * 0.86, 34);
+        needle(RX, RY, 45 + (1 - cl) * 90, RR * 0.86, 34);
+        hub(RX, RY, 34);
         const now = new Date(), hh = (now.getHours() < 10 ? '0' : '') + now.getHours(), mm = (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
-        lab(hh + ':' + mm, RX, RY + 52, 20, '#f0f0ec');
+        lab(hh + ':' + mm, RX - 24, RY + RR * 0.53 + 7, 18);
+        lab(fmt(temp(d.coolant, mph), 0) + (mph ? '°F' : '°C'), RX - 24, RY + RR * 0.66 + 7, 18);
         const g = isNum(d.gear) ? (d.gear > 0 ? 'D' + d.gear : d.gear === 0 ? 'N' : 'R') : 'D';
-        cv.roundRect(RX - 30, RY + 76, 60, 40, 5, '#3cc46e');
-        T(cv, g, RX, RY + 106, 28, '#0c0c0e', { font: 'bold', align: 'center' });
+        cv.roundRect(RX - 22, RY - RR * 0.58 - 15, 44, 30, 4, '#3cc46e');
+        T(cv, g, RX, RY - RR * 0.58 + 9, 22, '#0c0c0e', { font: 'bold', align: 'center' });
         const bx = PB.x + 14, by = PB.y + PB.h - 44;
         cv.roundRect(bx, by, 132, 32, 8, withAlpha('#000000', 0.55));
         cv.strokeRoundRect(bx, by, 132, 32, 8, 1.5, withAlpha('#e4e4de', 0.8));

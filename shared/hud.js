@@ -1766,6 +1766,9 @@ class HudApp {
             c.uniform(ref, 'u_ringW', [w.ringW || 18]);
             c.uniform(ref, 'u_red', [isNum(w.redFrom) ? w.redFrom : 2]);
             c.uniform(ref, 'u_hub', [w.hub || 16]);
+            c.uniform(ref, 'u_cut', [isNum(w.cut) ? w.cut : 2]);
+            c.uniform(ref, 'u_disc', [w.disc || 0]);
+            c.uniform(ref, 'u_sign', w.sign || [0, 0, 0]);
             c.uniform(ref, 'u_chrome', rgb(color(t, w.chrome || 'chrome')));
             c.uniform(ref, 'u_chrome2', rgb(color(t, w.chrome2 || 'chrome2')));
             c.uniform(ref, 'u_face', rgb(color(t, w.face || 'bg')));
@@ -2216,7 +2219,7 @@ class HudApp {
             } else {       // twin: A = fuel (0..1), B = coolant 40..130
                 const f = this._raw('fuel'), cl = this._raw('coolant');
                 a = isNum(f) ? q(f) : 0;
-                b = isNum(cl) ? q((cl - 40) / 90) : 0;
+                b = isNum(cl) ? q(1 - (cl - 40) / 90) : 1;
             }
             const key = a + '|' + b;
             if (!force && key === x.last) return;

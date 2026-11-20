@@ -44,43 +44,38 @@ def dial(id, cx, cy, R, **k):
 
 add(id='bg', type='fill', **{'class': 'content'}, z=0, x=0, y=0, w=1920, h=720, color='bg')
 
-# ---------- centre: speedometer 0-260 km/h
-SX, SY, SR = 965, 385, 322
-S0, SS = -140.0, 280.0
-dial('speedo', SX, SY, SR, kind='speed', start=S0, sweep=SS, minor=4, ringW=26, hub=24, redFrom=2)
-rin = SR - 26
-tr = rin * 0.93
+# 1:1 after the photo: the three dials 420 / 350 / 350 px wide there (x 1.6 here), cut flat at the bottom, centres on one
+# line (the side dials 20 px lower), the speedometer in the middle of the panel.
+K = 1.6
+SX, SY, SR = 960, 356, 336
+dial('speedo', SX, SY, SR, kind='speed', start=-135, sweep=270, minor=4, ringW=19, hub=52, disc=0.42, cut=0.75,
+     sign=[0.395, 0.095, 0.095])
 for i in range(14):
-    x, y = at(SX, SY, S0 + i * SS / 13, tr * 0.73)
+    x, y = at(SX, SY, -135 + i * 270 / 13, SR * 0.715)
     text('sp%d' % i, x, y, '{{cdial:%d}}' % i, 'c_num', w=80)
-text('sp_u', SX, SY + 105, '{{u:speed}}', 'c_txt', 'dim', w=120)
-text('sp_r', SX, SY + 185, '{{range}} {{u:dist}}', 'c_txt', 'fg', w=260)
-text('sp_a', SX, SY + 225, 'AVG {{avgSpeed}} {{u:speed}}', 'c_txt', 'dim', w=260)
+text('sp_u', SX, SY - SR * 0.60, '{{u:speed}}', 'c_small', 'fg', w=100)
+text('sp_r', SX, SY + SR * 0.55, '{{range}} {{u:dist}}', 'c_txt', 'fg', w=260)
+text('sp_a', SX, SY + SR * 0.64, 'AVG {{avgSpeed}} {{u:speed}}', 'c_txt', 'fg', w=260)
 
-# ---------- left: power reserve 0-100
-LX, LY, LR = 195, 440, 195
-L0, LS = -140.0, 230.0
-dial('reserve', LX, LY, LR, kind='reserve', start=L0, sweep=LS, ticks=5, minor=4, ringW=20, hub=17)
-lt = (LR - 20) * 0.93
+# left: 0-100 power reserve (a needle at 100 when idle)
+LX, LY, LR = 325, 390, 280
+dial('reserve', LX, LY, LR, kind='reserve', start=-110, sweep=200, ticks=5, minor=4, ringW=16, hub=50, disc=0.46, cut=0.75)
 for i in range(6):
-    x, y = at(LX, LY, L0 + i * LS / 5, lt * 0.64)
+    x, y = at(LX, LY, -110 + i * 40, LR * 0.62)
     text('rs%d' % i, x, y, str(i * 20), 'c_num', w=70)
-text('rs_t', LX, LY + 70, 'POWER', 'c_small', 'dim', w=120)
-text('rs_o', LX, LY + 115, 'OIL {{oil}}{{u:temp}}', 'c_txt', 'fg', w=190)
+text('rs_o', LX, LY + LR * 0.60, 'OIL {{oil}}{{u:temp}}', 'c_txt', 'fg', w=200)
 
-# ---------- right: fuel (E-F left) and coolant (C-H right), clock, gear box
-RX, RY, RR = 1735, 440, 180
-dial('fuelc', RX, RY, RR, kind='twin', start=-150, sweep=100, start2=50, sweep2=100, ticks=4, ticks2=4, minor=2,
-     ringW=20, hub=16)
-rt = (RR - 20) * 0.93
-for lab, th in (('E', -150), ('F', -50), ('C', 50), ('H', 150)):
-    x, y = at(RX, RY, th, rt * 0.70)
+# right: fuel (E-F, left half) and coolant (H-C, right half), gear on top, clock and coolant under the hub
+RX, RY, RR = 1603, 390, 280
+dial('fuelc', RX, RY, RR, kind='twin', start=-135, sweep=90, start2=45, sweep2=90, ticks=4, ticks2=4, minor=4,
+     ringW=16, hub=50, disc=0.46, cut=0.75)
+for lab, th in (('E', -133), ('F', -52), ('H', 52), ('C', 137)):
+    x, y = at(RX, RY, th, RR * 0.60)
     text('fl_' + lab, x, y, lab, 'c_txt', 'fg', w=40)
-text('fl_t', RX - 40, RY - 22, 'FUEL', 'c_small', 'dim', w=70)
-text('cl_t', RX + 40, RY - 22, 'TEMP', 'c_small', 'dim', w=70)
-text('cl_time', RX, RY + 50, '{{time}}', 'c_txt', 'fg', w=140)
-add(id='gear_box', type='fill', **{'class': 'content'}, z=3, x=RX - 30, y=RY + 90, w=60, h=46, color='green')
-text('gear', RX, RY + 113, '{{gear}}', 'c_gear', 'ink', w=60)
+add(id='gear_box', type='fill', **{'class': 'content'}, z=3, x=RX - 30, y=round(RY - RR * 0.58 - 21), w=60, h=42, color='green')
+text('gear', RX, RY - RR * 0.58, '{{gear}}', 'c_gear', 'ink', w=60)
+text('cl_time', RX - 36, RY + RR * 0.53, '{{time}}', 'c_txt', 'fg', w=150)
+text('cl_temp', RX - 36, RY + RR * 0.66, '{{coolant}}{{u:temp}}', 'c_txt', 'fg', w=150)
 
 doc = {
     'schemaVersion': 2,

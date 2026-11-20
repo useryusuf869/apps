@@ -1013,6 +1013,9 @@ uniform float u_minor;
 uniform float u_ringW;
 uniform float u_red;
 uniform float u_hub;
+uniform float u_cut;      // the dial stops this fraction of R below its centre (the open bottom)
+uniform float u_disc;     // radius (fraction of R) of the textured disc behind the hub
+uniform vec3 u_sign;      // a speed-limit sign: x, y (fractions of R from the centre), radius; r 0: none
 uniform vec3 u_chrome;
 uniform vec3 u_chrome2;
 uniform vec3 u_face;
@@ -1038,7 +1041,7 @@ vec3 ticks(vec3 col, vec2 p, float d, float a, float start, float sweep, float n
     float ta = start + k / steps * sweep;
     vec2 dir = vec2(sin(ta), cos(ta));
     bool major = mod(k, u_minor) < 0.5;
-    float len = major ? tr * 0.115 : tr * 0.06, wid = major ? tr * 0.012 : tr * 0.006;
+    float len = major ? tr * 0.075 : tr * 0.05, wid = major ? tr * 0.0125 : tr * 0.0085;
     float dd = seg(p, dir * (tr - len), dir * tr) - wid;
     float c = clamp(0.5 - dd, 0.0, 1.0);
     vec3 tc = (red <= 1.0 && k / steps >= red - 0.001) ? u_hot : u_tick;
@@ -1051,8 +1054,8 @@ vec3 needle(vec3 col, vec2 p, float start, float sweep, float v, float L) {
     float na = start + clamp(v, 0.0, 1.0) * sweep;
     vec2 nd = vec2(sin(na), cos(na));
     vec2 q = vec2(dot(p, vec2(nd.y, -nd.x)), dot(p, nd));
-    if (q.y > -0.16 * L && q.y < L) {
-        float w = mix(L * 0.022, L * 0.006, clamp(q.y / L, 0.0, 1.0));
+    if (q.y > 0.0 && q.y < L) {
+        float w = mix(L * 0.016, L * 0.005, clamp(q.y / L, 0.0, 1.0));
         float c = clamp(w + 0.5 - abs(q.x), 0.0, 1.0);
         float shine = 0.75 + 0.25 * clamp(q.x / w + 0.5, 0.0, 1.0);
         col = mix(col, u_needle * shine, c);
@@ -1064,39 +1067,62 @@ void main() {
     vec2 p = vec2(v_uv.x - 0.5, 0.5 - v_uv.y) * u_size;
     float R = min(u_size.x, u_size.y) * 0.5 - 1.0;
     float d = length(p);
-    if (d > R + 0.5) { gl_FragColor = vec4(0.0); return; }
+    if (d > R + 0.5 || p.y < -u_cut * R) { gl_FragColor = vec4(0.0); return; }
     float edge = clamp(R + 0.5 - d, 0.0, 1.0);
     float rin = R - u_ringW;
     float a = atan(p.x, p.y);
     vec3 col = u_face;
     if (d > rin) {
-        // brushed chrome: bright top-left, dark bands, a lip at the inner edge
-        float t = (d - rin) / u_ringW;
-        float band = 0.5 + 0.5 * sin(a * 3.0 + 0.8) ;
-        float sheen = clamp(0.5 - 0.5 * dot(p / d, normalize(vec2(-0.6, 0.8))), 0.0, 1.0);
-        vec3 ring = mix(u_chrome2, u_chrome, clamp(0.25 + 0.55 * sheen + 0.25 * band, 0.0, 1.0));
-        ring *= 0.85 + 0.3 * sin(t * PI);                       // a rounded section
-        float lip = clamp(1.0 - (d - rin) / 2.5, 0.0, 1.0);
-        float rim = clamp(1.0 - (R - d) / 2.0, 0.0, 1.0);
-        ring = mix(ring, vec3(1.0), lip * 0.5 + rim * 0.25);
+        // polished chrome tube: dark outer edge, bright body, a hard white line, grey inner side; sharp reflections
+        float t = (d - rin) / u_ringW;                                   // 0 inside .. 1 outside
+        float prof = 0.55 + 0.45 * exp(-pow((t - 0.42) * 3.0, 2.0));
+        float refl = 0.78 + 0.22 * cos(a + 0.75)
+                   + 0.55 * pow(max(cos(a + 0.75), 0.0), 14.0)
+                   + 0.45 * pow(max(cos(a - 2.35), 0.0), 10.0)
+                   - 0.45 * pow(max(cos(a - 0.6), 0.0), 6.0) - 0.4 * pow(max(cos(a + 2.2), 0.0), 8.0);
+        vec3 ring = mix(u_chrome2, vec3(1.0), clamp(prof * refl, 0.0, 1.0));
+        ring = mix(ring, vec3(1.0), smoothstep(0.80, 0.9, t) * (1.0 - smoothstep(0.9, 1.0, t)) * 0.7);   // outer white line
+        ring *= 0.35 + 0.65 * smoothstep(0.0, 0.1, t) * (0.55 + 0.45 * smoothstep(1.0, 0.92, t));
+        float lip = clamp(1.0 - t * u_ringW / 2.0, 0.0, 1.0);
+        ring = mix(ring, vec3(1.0), lip * 0.55);
         gl_FragColor = vec4(ring, edge);
         return;
     }
-    // dark face with a soft sheen toward the top, a faint inner shadow under the bezel
-    col *= 0.7 + 0.6 * clamp(0.5 + p.y / (2.0 * rin), 0.0, 1.0);
-    col *= 0.55 + 0.45 * smoothstep(rin, rin - rin * 0.18, d);
-    float tr = rin - rin * 0.07;
+    // dark glassy face, brighter towards the middle; the textured disc behind the hub
+    col *= 0.55 + 0.7 * smoothstep(rin, 0.0, d);
+    col *= 0.6 + 0.4 * smoothstep(rin, rin * 0.82, d);
+    float dr = u_disc * R;
+    if (d < dr) {
+        float n = 0.5 + 0.5 * sin(p.x * 1.7) * sin(p.y * 1.7);
+        vec3 dc = vec3(0.075, 0.08, 0.09) + vec3(0.03) * n;
+        dc *= 0.7 + 0.5 * smoothstep(dr, 0.0, d);
+        col = mix(dc, col, smoothstep(dr - 2.0, dr, d) * 0.9);
+    }
+    float tr = rin * 0.965;
     col = ticks(col, p, d, a, u_s.x, u_s.y, u_n.x, tr, u_red);
     col = ticks(col, p, d, a, u_s.z, u_s.w, u_n.y, tr, 2.0);
-    float L = tr - rin * 0.1;
+    // the speed-limit sign
+    if (u_sign.z > 0.0) {
+        vec2 sp = p - vec2(u_sign.x, -u_sign.y) * R;
+        float sd = length(sp), sr = u_sign.z * R;
+        if (sd < sr) {
+            col = vec3(0.86, 0.1, 0.1);
+            if (sd < sr * 0.74) { col = vec3(0.95); if (abs(sp.y) < sr * 0.07 && abs(sp.x) < sr * 0.5) col = vec3(0.5); }
+        }
+    }
+    float L = tr - rin * 0.075;
     col = needle(col, p, u_s.x, u_s.y, u_v.x, L);
     col = needle(col, p, u_s.z, u_s.w, u_v.y, L);
-    // the hub: a plain chrome cap (no marque)
+    // the hub: a plain polished chrome cap on a dark collar (no marque)
     float hr = u_hub;
+    if (d < hr * 1.18) col = mix(col, vec3(0.02), 0.9);
     if (d < hr) {
-        float h = clamp(0.5 - 0.5 * dot(p / max(d, 0.001), normalize(vec2(-0.6, 0.8))), 0.0, 1.0);
-        vec3 c = mix(u_chrome2, u_chrome, 0.35 + 0.6 * (1.0 - h) * clamp(1.0 - d / hr, 0.0, 1.0) + 0.3 * (1.0 - h));
-        c = mix(c, vec3(1.0), clamp(1.0 - (hr - d) / 2.0, 0.0, 1.0) * 0.4);
+        vec2 n2 = p / hr;
+        float h = clamp(0.5 - 0.5 * dot(n2, normalize(vec2(-0.6, 0.8))), 0.0, 1.0);
+        float rings = 0.5 + 0.5 * sin(d * 2.2);
+        vec3 c = mix(u_chrome2, vec3(1.0), clamp(0.25 + 0.65 * (1.0 - h) + 0.08 * rings, 0.0, 1.0));
+        if (d < hr * 0.78) c = mix(vec3(0.04, 0.04, 0.05), vec3(0.16), clamp(0.5 - n2.y * 0.5, 0.0, 1.0));
+        c = mix(c, vec3(1.0), clamp(1.0 - (hr - d) / 1.5, 0.0, 1.0) * 0.5);
         col = c;
     }
     gl_FragColor = vec4(col, edge);
