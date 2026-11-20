@@ -82,6 +82,9 @@
  *             "ticks" [speed, rpm], "rpmMax" (speed follows SPEED_SCALE), "fuelSeg" / "oilSeg" [fullX, fullY,
  *             emptyX, emptyY], "strip" [left end x, y, h, slant], "topEnd" x; the middle is black, and the map
  *             window is cut see-through while "holeWhen" is on ("hole", "holeInset", "holeRadius" as fill)
+ *   lambo     effect layer (shaders.js lambo): the Lambo theme's carbon honeycomb with glass panels "panels": [{ x, y, w, h
+ *             (target px), cut: [top-left, top-right, bottom-right, bottom-left] corner cuts px }] (up to 12) and a glowing
+ *             "rail": [[x, y], ...] (up to 17 points, drawn again mirrored on the right). Roles bg, hex, panel, line, glow3.
  *   synth     effect layer (shaders.js synth): the Synthwave theme's whole backdrop: a dusk sky with stars, a striped sun
  *             sitting on the horizon, two neon-edged mountain ranges and a perspective grid below it. "horizon" (y in the
  *             layer, 470), "sunX" (the sun's centre and the grid's vanishing point, the layer's middle), "sunR" (sun radius px,
@@ -1826,6 +1829,31 @@ class HudApp {
             c.uniform(ref, 'u_color', rgba(color(t, w.color || 'bg')));
             c.uniform(ref, 'u_hole', this._hole(w));
             c.uniform(ref, 'u_holeR', [this._holeRadius(w)]);
+        } else if (w.type === 'lambo') {
+            const P = (Array.isArray(w.panels) ? w.panels : []).filter((b) => b && isNum(b.x) && isNum(b.y) && isNum(b.w) && isNum(b.h)).slice(0, 12);
+            const pa = [], ca = [];
+            for (let i = 0; i < 12; i++) {
+                const b = P[i] || { x: 0, y: 0, w: 1, h: 1 }, cu = b.cut || [0, 0, 0, 0];
+                // panel coordinates are target px; the layer sits at (w.x, w.y)
+                pa.push(b.x - w.x, b.y - w.y, b.w, b.h); ca.push(cu[0] || 0, cu[1] || 0, cu[2] || 0, cu[3] || 0);
+            }
+            const R = (Array.isArray(w.rail) ? w.rail : []).filter((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1])).slice(0, 17);
+            const rs = [];
+            for (let i = 0; i < 16; i++) {
+                const a = R[i], b = R[i + 1];
+                rs.push(...(a && b ? [a[0] - w.x, a[1] - w.y, b[0] - w.x, b[1] - w.y] : [0, 0, 0, 0]));
+            }
+            c.uniform(ref, 'u_size', [w.w, w.h]);
+            c.uniform(ref, 'u_n', [P.length]);
+            c.uniform(ref, 'u_p', pa, { type: 'vec4' });
+            c.uniform(ref, 'u_c', ca, { type: 'vec4' });
+            c.uniform(ref, 'u_rn', [Math.max(0, R.length - 1)]);
+            c.uniform(ref, 'u_rs', rs, { type: 'vec4' });
+            c.uniform(ref, 'u_bg', rgb(color(t, 'bg')));
+            c.uniform(ref, 'u_hex', rgb(color(t, 'hex')));
+            c.uniform(ref, 'u_panel', rgb(color(t, 'panel')));
+            c.uniform(ref, 'u_line', rgb(color(t, 'line')));
+            c.uniform(ref, 'u_glow', rgb(color(t, 'glow3')));
         } else if (w.type === 'synth') {
             c.uniform(ref, 'u_size', [w.w, w.h]);
             c.uniform(ref, 'u_hz', [isNum(w.horizon) ? w.horizon : 470]);

@@ -59,7 +59,7 @@ class Page {
     constructor(ctx, hud, cfg) {
         this.ctx = ctx; this.hud = hud; this.cfg = cfg;
         this.tab = cfg.tabs[0];
-        if (cfg.tabs.indexOf('dash') >= 0 && hud.car) this.dash = new SynthDash(hud.car, (k) => this.get(k));
+        if (cfg.tabs.indexOf('dash') >= 0 && hud.car) this.dash = new SynthDash(hud.car, (k) => this.get(k), (k, v) => this.set(k, v));
         this.picker = null;              // { key, title } while a list of choices is open over the page
         this.loop = null;
         this.slotLayout = null;          // Readouts: the layout whose slots are edited (null: the one showing)

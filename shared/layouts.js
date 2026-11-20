@@ -40,6 +40,7 @@ const TYPES = {
     gmeter: [],
     tiles: ['tiles'],
     synth: [],
+    lambo: [],
     revarc: ['center', 'r', 'start', 'sweep'],
 };
 const CLASSES = ['ambient', 'content', 'overlay', 'alert'];

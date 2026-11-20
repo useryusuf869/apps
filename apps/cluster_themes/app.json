@@ -1,7 +1,7 @@
 {
   "id": "cluster_themes",
   "title": "Cluster Themes",
-  "description": "Zeichnet den Tacho neu: GT3-Renn-Dash, M-Stil, Sport, Minimal, Roadster, Track, Drag, Rally, Retro 80s, Synthwave, Cruise oder Dyno, mit Schaltblitz, Ladedruck, Temperaturen, Reifen, G-Meter und Beschleunigungs-Timer",
+  "description": "Zeichnet den Tacho neu: GT3-Renn-Dash, M-Stil, Sport, Minimal, Roadster, Track, Drag, Rally, Retro 80s, Synthwave, Lambo, Cruise oder Dyno, mit Schaltblitz, Ladedruck, Temperaturen, Reifen, G-Meter und Beschleunigungs-Timer",
   "version": "0.14.6",
   "vendor": "custom",
   "loggingId": "OAC1",
@@ -144,6 +144,10 @@
           "Synthwave"
         ],
         [
+          "lambo",
+          "Lambo"
+        ],
+        [
           "cruise",
           "Cruise"
         ],
@@ -218,6 +222,10 @@
           "Synthwave"
         ],
         [
+          "lambo",
+          "Lambo"
+        ],
+        [
           "cruise",
           "Cruise"
         ],
@@ -278,6 +286,10 @@
           "Synthwave"
         ],
         [
+          "lambo",
+          "Lambo"
+        ],
+        [
           "cruise",
           "Cruise"
         ],
@@ -336,6 +348,10 @@
         [
           "synthwave",
           "Synthwave"
+        ],
+        [
+          "lambo",
+          "Lambo"
         ],
         [
           "cruise",

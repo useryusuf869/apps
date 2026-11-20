@@ -1279,6 +1279,91 @@ void main() {
 }
 `;
 
+const LAMBO = `// The Lambo theme's backdrop in one cluster-render "effect" layer (GLSL ES 1.00): a dark carbon honeycomb, a
+// glowing rail along the hood line on both sides (the left one, mirrored for the right) and up to 12 angled glass
+// panels with a bright edge. v_uv is 0..1 across the layer, (0,0) at the top-left. Uniforms from hud.js:
+//   u_size   layer size (w, h)      u_n  panels in use      u_p[i]  panel x, y, w, h      u_c[i]  its cut corners
+//   (top-left, top-right, bottom-right, bottom-left, px)    u_rn  rail segments     u_rs[i]  segment x1, y1, x2, y2
+//   u_bg  base   u_hex  honeycomb lines   u_panel  panel glass   u_line  panel edge and rail   u_glow  the glow round them
+// Output is opaque (alpha 1): the layer replaces BMW's gauges under it, like the fill widget.
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 v_uv;
+uniform vec2 u_size;
+uniform float u_n;
+uniform vec4 u_p[12];
+uniform vec4 u_c[12];
+uniform float u_rn;
+uniform vec4 u_rs[16];
+uniform vec3 u_bg;
+uniform vec3 u_hex;
+uniform vec3 u_panel;
+uniform vec3 u_line;
+uniform vec3 u_glow;
+
+float segd(vec2 p, vec2 a, vec2 b) {
+    vec2 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h);
+}
+// signed distance (px, negative inside) to a rectangle with its corners cut at 45 degrees
+float chamfer(vec2 p, vec4 r, vec4 c) {
+    vec2 q = p - r.xy;
+    float d = max(max(-q.x, q.x - r.z), max(-q.y, q.y - r.w));
+    float k = 0.70710678;
+    d = max(d, (c.x - q.x - q.y) * k);
+    d = max(d, (c.y - (r.z - q.x) - q.y) * k);
+    d = max(d, (c.z - (r.z - q.x) - (r.w - q.y)) * k);
+    d = max(d, (c.w - q.x - (r.w - q.y)) * k);
+    return d;
+}
+// distance to the nearest edge of the honeycomb cell holding p (cell about 1.0 wide, as in the usual hex-grid trick)
+float hexEdge(vec2 p) {
+    vec2 r = vec2(1.0, 1.7320508), h = r * 0.5;
+    vec2 a = mod(p, r) - h, b = mod(p - h, r) - h;
+    vec2 g = dot(a, a) < dot(b, b) ? a : b;
+    g = abs(g);
+    return 0.5 - max(dot(g, vec2(0.8660254, 0.5)), g.y);
+}
+
+void main() {
+    vec2 p = vec2(v_uv.x, v_uv.y) * u_size;
+    vec2 c = p / u_size - 0.5;
+    vec3 col = u_bg * (1.18 - 0.9 * dot(c, c));
+    float e = hexEdge(p / 30.0);
+    float line = 1.0 - smoothstep(0.0, 0.05, e);
+    col += u_hex * line * (0.55 - 0.7 * dot(c, c));
+
+    // the rail along the hood, both sides
+    vec2 pm = vec2(u_size.x - p.x, p.y);
+    float rd = 1.0e4;
+    for (int i = 0; i < 16; i++) {
+        if (float(i) >= u_rn) break;
+        vec4 s = u_rs[i];
+        rd = min(rd, min(segd(p, s.xy, s.zw), segd(pm, s.xy, s.zw)));
+    }
+    col += u_glow * 0.55 * exp(-rd * 0.22) * step(rd, 40.0);
+    col = mix(col, u_line, (1.0 - smoothstep(1.2, 2.4, rd)) * step(rd, 4.0));
+
+    // the glass panels
+    for (int i = 0; i < 12; i++) {
+        if (float(i) >= u_n) break;
+        float d = chamfer(p, u_p[i], u_c[i]);
+        float y = clamp((p.y - u_p[i].y) / u_p[i].w, 0.0, 1.0);
+        vec3 glass = mix(u_panel * 1.35, u_panel * 0.7, y);
+        col += u_glow * 0.4 * exp(-max(d, 0.0) * 0.16) * step(0.0, d) * step(d, 30.0);
+        col = mix(col, glass, 0.93 * (1.0 - smoothstep(-0.5, 0.8, d)));
+        float edge = 1.0 - smoothstep(0.8, 2.2, abs(d + 1.2));
+        col = mix(col, u_line, edge * step(d, 2.5));
+        col += u_glow * 0.25 * exp(-abs(d + 1.2) * 0.35) * step(d, 0.0);
+    }
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
 const SYNTH = `// The Synthwave theme's whole backdrop in one cluster-render "effect" layer (GLSL ES 1.00): a dusk sky, a striped
 // sun sitting on the horizon, two neon-edged mountain ranges and a perspective grid running to the horizon.
 // v_uv is 0..1 across the layer, (0,0) at the top-left as on the car. Positions in layer px. Uniforms from hud.js:
@@ -1404,4 +1489,4 @@ void main() {
 }
 `;
 
-module.exports = { shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH };
+module.exports = { shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO };

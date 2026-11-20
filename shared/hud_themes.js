@@ -155,6 +155,19 @@ const THEMES = {
         sunA: [255, 236, 70, 255], sunB: [255, 134, 40, 255], sunC: [255, 40, 150, 255],
         grid: [255, 70, 220, 255], ridge: [0, 229, 255, 255], ridgeFill: [34, 6, 78, 255],
     },
+    // Lambo (layouts lambo.json), after konsti_m440i's "Lambo x BMW" cluster: carbon honeycomb, glass panels with a
+    // bright edge, a cold blue to white to orange to red rev arc and a hollow red gear. Roles after "well" are its own.
+    lambo: {
+        name: 'Lambo',
+        fg: [244, 247, 252, 255], dim: [150, 176, 204, 255], track: [255, 255, 255, 40], arc: [70, 180, 240, 255],
+        glow: 0.5, stripe: false,
+        bar: { low: [70, 180, 240], mid: [255, 150, 30], high: [255, 36, 36], midAt: 'shift' },
+        rev: { from: [70, 180, 240], to: [255, 36, 36] },
+        bg: [4, 8, 14, 255], panel: [10, 26, 44, 255], line: [214, 232, 255, 255], head: [70, 180, 240, 255],
+        ink: [12, 12, 14, 255], accent: [70, 180, 240, 255], well: [0, 0, 0, 255],
+        hex: [120, 150, 190, 255], glow3: [30, 110, 200, 255],
+        blue: [40, 160, 255, 255], mblue: [24, 72, 190, 255], red: [255, 40, 40, 255], orange: [255, 150, 30, 255], white: [244, 247, 252, 255],
+    },
     // Cruise (layouts cruise.json): calm and quiet for the highway, soft white and a cool teal, no reds until needed.
     cruise: {
         name: 'Cruise',

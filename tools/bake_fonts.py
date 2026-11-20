@@ -97,16 +97,25 @@ CLUSTER_FONTS = [
     ('w_gear', 'Orbitron[wght].ttf', 118, 'PRNDSM-' + DIGITS, 3, 'Black', {'0': 'O'}),
     ('w_val', 'Orbitron[wght].ttf', 44, DIGITS + ':+-.\u00b0', 0, 'Bold', {'0': 'O'}, '\u00b0'),
     ('w_label', 'Orbitron[wght].ttf', 22, UPPER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}),
+    # Lambo: wide Orbitron; the gear is an outline only (hollow), after the red outlined digit of the reel's cluster
+    ('l_gear', 'Orbitron[wght].ttf', 190, DIGITS + 'PRND-', 0, 'Black', {'0': 'O'}, '', 6),
+    ('l_speed', 'Orbitron[wght].ttf', 104, DIGITS + '-', 3, 'Black', {'0': 'O'}),
+    ('l_num', 'Orbitron[wght].ttf', 42, DIGITS, 0, 'Bold', {'0': 'O'}),
+    ('l_val', 'Orbitron[wght].ttf', 34, DIGITS + ':+-.\u00b0', 0, 'Bold', {'0': 'O'}, '\u00b0'),
+    ('l_label', 'Orbitron[wght].ttf', 17, UPPER + LOWER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}),
+    ('l_head', 'Orbitron[wght].ttf', 26, UPPER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}),
+    ('l_gears', 'Orbitron[wght].ttf', 30, DIGITS, 0, 'Black', {'0': 'O'}),
 ]
 FONTS = {'idrive_hud_widgets': HUD_FONTS, 'cluster_themes': CLUSTER_FONTS}
 PAD = 2
 ATLAS_W = 1024
 
 
-def bake(out, name, file, size, chars, stroke=0, weight=None, subs=None, tuck=''):
+def bake(out, name, file, size, chars, stroke=0, weight=None, subs=None, tuck='', hollow=0):
     """stroke: px of extra weight round every glyph (Michroma has one weight). weight: a named instance of a
     variable font (Orbitron: Regular .. Black), for the M theme's squared BMW-style gear, speed and numbers.
     subs: {char: glyph drawn for it} (Orbitron's zero is slashed; the M8's is plain, so its O stands in).
+    hollow: px of outline drawn round every glyph with the glyph itself cut out (an outline-only digit, Lambo's gear).
     tuck: characters added to a font after layouts were built on its cell height (° on value / y_val, Nov 7 2026):
     they don't count towards the cell, and one that rises above it is drawn lower so its top meets the cell's."""
     font = ImageFont.truetype(os.path.join(SRC, file), size)
@@ -114,6 +123,7 @@ def bake(out, name, file, size, chars, stroke=0, weight=None, subs=None, tuck=''
     subs = subs or {}
     glyph = lambda c: subs.get(c, c)
     ink = [c for c in chars if c != ' ']
+    stroke += hollow
     boxes = {c: font.getbbox(glyph(c), anchor='ls', stroke_width=stroke) for c in ink}
     top = min(b[1] for c, b in boxes.items() if c not in tuck)
     bottom = max(b[3] for c, b in boxes.items() if c not in tuck)
@@ -130,7 +140,10 @@ def bake(out, name, file, size, chars, stroke=0, weight=None, subs=None, tuck=''
         l, _, r, _ = boxes[c]
         w = r - l + 2 * PAD
         img = Image.new('L', (w, height), 0)
-        ImageDraw.Draw(img).text((PAD - l, PAD - top + drop.get(c, 0)), glyph(c), font=font, fill=255, anchor='ls', stroke_width=stroke, stroke_fill=255)
+        dr = ImageDraw.Draw(img)
+        dr.text((PAD - l, PAD - top + drop.get(c, 0)), glyph(c), font=font, fill=255, anchor='ls', stroke_width=stroke, stroke_fill=255)
+        if hollow:
+            dr.text((PAD - l, PAD - top + drop.get(c, 0)), glyph(c), font=font, fill=0, anchor='ls', stroke_width=stroke - hollow, stroke_fill=0)
         shift = (tab - adv) / 2 if c in DIGITS else 0
         cells.append((c, img, round(l - PAD + shift), round(tab if c in DIGITS else adv)))
 

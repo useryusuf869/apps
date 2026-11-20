@@ -145,6 +145,10 @@
           "Synthwave"
         ],
         [
+          "lambo",
+          "Lambo"
+        ],
+        [
           "cruise",
           "Cruise"
         ],
@@ -219,6 +223,10 @@
           "Synthwave"
         ],
         [
+          "lambo",
+          "Lambo"
+        ],
+        [
           "cruise",
           "Cruise"
         ],
@@ -279,6 +287,10 @@
           "Synthwave"
         ],
         [
+          "lambo",
+          "Lambo"
+        ],
+        [
           "cruise",
           "Cruise"
         ],
@@ -337,6 +349,10 @@
         [
           "synthwave",
           "Synthwave"
+        ],
+        [
+          "lambo",
+          "Lambo"
         ],
         [
           "cruise",
@@ -734,7 +750,7 @@
       "key": "badge",
       "label": "Schriftzug",
       "type": "choice",
-      "default": "none",
+      "default": "330i",
       "options": [
         [
           "none",
@@ -993,6 +1009,22 @@
         [
           "off",
           "Aus"
+        ]
+      ]
+    },
+    {
+      "key": "dashStyle",
+      "label": "Mittelbildschirm-Stil",
+      "type": "choice",
+      "default": "lambo",
+      "options": [
+        [
+          "lambo",
+          "Lambo"
+        ],
+        [
+          "synthwave",
+          "Synthwave"
         ]
       ]
     }

@@ -134,10 +134,35 @@ function fillPoly(cv, pts, color) {
     return cv;
 }
 
+/* ---------- Lambo look (after konsti_m440i's cluster): carbon honeycomb, glass panels, blue to orange to red ---------- */
+const L = { bg: '#04080e', glass: '#0a1a2c', edge: '#d6e8ff', blue: '#28a0ff', mblue: '#1848be', red: '#ff2828', orange: '#ff961e', white: '#f4f7fc', dim: '#96b0cc', hex: '#7896be' };
+
+/** a glass panel with its corners cut (cut: tl, tr, br, bl px) and a bright, glowing edge */
+function glass(cv, p, cut) {
+    const x = p.x, y = p.y, w = p.w, h = p.h, c = cut || [0, 0, 0, 0];
+    const pts = [[x + c[0], y], [x + w - c[1], y], [x + w, y + c[1]], [x + w, y + h - c[2]], [x + w - c[2], y + h], [x + c[3], y + h], [x, y + h - c[3]], [x, y + c[0]]];
+    const ring = (wd, a, col) => cv.polyline(pts.concat([pts[0]]), wd, withAlpha(col, a));
+    fillPoly(cv, pts, withAlpha(L.glass, 0.92));
+    ring(9, 0.10, L.blue); ring(5, 0.18, L.blue); ring(2, 1, L.edge);
+}
+
+/** the honeycomb (a cached layer, drawn once): zig-zag rows and the short links between them */
+function drawHoneycomb(c, w, h) {
+    c.fillRect(0, 0, w, h, L.bg);
+    const a = 15, dx = a * 0.866 * 2, col = withAlpha(L.hex, 0.22);
+    for (let row = 0; row * a * 1.5 < h + a; row++) {
+        const y0 = row * a * 1.5, off = (row % 2) * dx / 2;
+        const pts = [];
+        for (let x = -dx + off; x < w + dx; x += dx / 2) { const up = Math.round((x - off) / (dx / 2)) % 2 === 0; pts.push([x, y0 + (up ? 0 : a * 0.5)]); }
+        c.polyline(pts, 1, col);
+        for (let x = -dx + off; x < w + dx; x += dx) c.line(x, y0 + a * 0.5, x, y0 + a * 1.5, 1, col);
+    }
+}
+
 class SynthDash {
     /** car: the kit's Car (data(): rpm, speed, gLat, gLong, oil, coolant, gear, torque, demo); get(key): the app's setting. */
-    constructor(car, get) {
-        this.car = car; this.get = get;
+    constructor(car, get, set) {
+        this.car = car; this.get = get; this.setting = set || function () {};
         this.newSession();
         this.shown = { lat: 0, long: 0 };
         this.phase = 0; this.lastT = 0; this.smooth = [];
@@ -171,9 +196,113 @@ class SynthDash {
         this.sample(d, now);
         const c = this.cur || { lat: 0, long: 0 };
         this.shown.lat += (c.lat - this.shown.lat) * 0.3; this.shown.long += (c.long - this.shown.long) * 0.3;
-        this.vitals(cv, d);
-        this.scenePanel(cv, d, dt, back);
-        this.radar(cv, now);
+        if (this.get('dashStyle') === 'synthwave') {
+            this.vitals(cv, d);
+            this.scenePanel(cv, d, dt, back);
+            this.radar(cv, now);
+        } else {
+            this.lambo(cv, d, back);
+        }
+        this.styleButton(cv);
+    }
+
+    /** the little switch between the two looks, bottom middle */
+    styleButton(cv) {
+        const lam = this.get('dashStyle') !== 'synthwave', bx = PB.x + PB.w - 146, by = PB.y + PB.h - 44;
+        const col = lam ? '#28a0ff' : C.cyan;
+        cv.roundRect(bx, by, 132, 32, 8, withAlpha('#000000', 0.55));
+        cv.strokeRoundRect(bx, by, 132, 32, 8, 1.5, withAlpha(col, 0.8));
+        T(cv, 'STIL: ' + (lam ? 'LAMBO' : 'SYNTHWAVE'), bx + 66, by + 22, 14, col, { font: 'bold', spacing: 0.5, align: 'center' });
+        if (cv.target) cv.target(bx, by, 132, 32, () => this.setting('dashStyle', lam ? 'synthwave' : 'lambo'), 'dash-style', 8);
+    }
+
+    lambo(cv, d, back) {
+        const mph = this.mph(), V = (k) => (isNum(k) ? (mph ? k / MPH : k) : null), S = this.S;
+        cv.blit(G.layer('lambo-bg', 1600, 520, (c) => drawHoneycomb(c, 1600, 520)), 0, 0);
+        // rail along the top, like the cluster's
+        cv.polyline([[14, 520], [24, 150], [110, 66], [520, 40], [800, 36], [1080, 40], [1490, 66], [1576, 150], [1586, 520]], 2, withAlpha(L.edge, 0.5));
+        glass(cv, PA, [0, 0, 34, 0]); glass(cv, PB, [34, 34, 34, 34]); glass(cv, PC, [0, 0, 0, 34]);
+
+        // left: the engine's vitals with segmented bars
+        const x = PA.x + 28, r = PA.x + PA.w - 28;
+        T(cv, 'ENGINE', x, PA.y + 46, 20, L.blue, { font: 'bold', spacing: 3 });
+        const rows = [
+            [mph ? 'SPEED  MPH' : 'SPEED  KM/H', V(d.speed), 0, mph ? 160 : 260],
+            ['RPM', d.rpm, 0, 7000],
+            [mph ? 'OIL  °F' : 'OIL  °C', temp(d.oil, mph), mph ? 100 : 40, mph ? 280 : 140],
+            [mph ? 'COOLANT  °F' : 'COOLANT  °C', temp(d.coolant, mph), mph ? 100 : 40, mph ? 270 : 130],
+            ['TORQUE  NM', d.torque, 0, 500],
+        ];
+        rows.forEach(([label, v, lo, hi], i) => {
+            const y = PA.y + 96 + i * 52;
+            T(cv, label, x, y, 16, L.dim, { font: 'bold', spacing: 1.5 });
+            T(cv, fmt(v, 0), r, y + 6, 36, isNum(v) ? L.white : withAlpha(L.white, 0.35), { font: 'num', align: 'right' });
+            this.segs(cv, x, y + 14, r - x, 9, isNum(v) ? clamp((v - lo) / (hi - lo), 0, 1) : 0, 26);
+        });
+        const by = PA.y + 96 + 5 * 52 + 10;
+        T(cv, 'BEST', x, by + 12, 16, L.blue, { font: 'bold', spacing: 3 });
+        T(cv, 'ZURÜCKSETZEN', r, by + 12, 13, L.dim, { font: 'bold', spacing: 1, align: 'right' });
+        if (cv.target) cv.target(r - 170, by - 12, 170, 36, () => this.newSession(), 'dash-reset', 8);
+        [['TOP ' + (mph ? 'MPH' : 'KM/H'), fmt(V(S.vmax), 0)], ['MAX RPM', fmt(S.rpmMax, 0)], ['MAX G', S.gMax > 0.005 ? S.gMax.toFixed(2) : '-.--']].forEach(([l, v], i) => {
+            const cx0 = x + i * 146;
+            T(cv, l, cx0, by + 40, 13, L.dim, { font: 'bold', spacing: 1 });
+            T(cv, v, cx0, by + 70, 28, v === '--' || v === '-.--' ? withAlpha(L.white, 0.35) : L.white, { font: 'num' });
+        });
+
+        // middle: the rev arc with 0-7 inside, the hollow gear, the speed
+        const cx = PB.x + PB.w / 2, cy = PB.y + 392, R0 = 292, R1 = 244, A0 = -62, SW = 124, N = 30;
+        const rpm = isNum(d.rpm) ? clamp(d.rpm / 7000, 0, 1) : 0;
+        for (let i = 0; i < N; i++) {
+            const f = (i + 0.5) / N, a = A0 + SW * i / N, a2 = A0 + SW * (i + 1) / N - 1.6;
+            const lit = f <= rpm;
+            const col = !lit ? withAlpha('#ffffff', 0.13) : f > 0.86 ? L.red : f > 0.72 ? L.orange : L.blue;
+            cv.arc(cx, cy, R1, R0, a, a2, col);
+        }
+        for (let k = 0; k < 8; k++) {
+            const a = (A0 + SW * k / 7) * Math.PI / 180, rr = R1 - 26;
+            T(cv, String(k), cx + Math.sin(a) * rr, cy - Math.cos(a) * rr + 9, 22, k >= 6 ? L.red : L.white, { font: 'num', align: 'center' });
+        }
+        T(cv, 'RPM X 1000', PB.x + 40, PB.y + PB.h - 62, 12, L.dim, { font: 'bold', spacing: 1 });
+        const g = isNum(d.gear) ? (d.gear > 0 ? String(d.gear) : d.gear === 0 ? 'N' : 'R') : '-';
+        const gy = PB.y + 268;
+        [[-3, 0], [3, 0], [0, -3], [0, 3], [-2.2, -2.2], [2.2, 2.2], [-2.2, 2.2], [2.2, -2.2]].forEach((o) => T(cv, g, cx + o[0], gy + o[1], 124, L.red, { font: 'bold', align: 'center' }));
+        T(cv, g, cx, gy, 124, L.glass, { font: 'bold', align: 'center' });
+        T(cv, fmt(V(d.speed), 0), cx, PB.y + 356, 76, L.white, { font: 'num', align: 'center' });
+        T(cv, mph ? 'MPH' : 'KM/H', cx, PB.y + 384, 16, L.dim, { font: 'bold', spacing: 2, align: 'center' });
+        [[L.blue, 0], [L.mblue, 1], [L.red, 2]].forEach(([c, i]) => cv.fillRect(cx - 78 + i * 52, PB.y + 396, 52, 5, c));
+        const bx = PB.x + 14, byy = PB.y + PB.h - 44;
+        cv.roundRect(bx, byy, 132, 32, 8, withAlpha('#000000', 0.55));
+        cv.strokeRoundRect(bx, byy, 132, 32, 8, 1.5, withAlpha(L.blue, 0.8));
+        T(cv, '<  ZURÜCK', bx + 66, byy + 22, 14, L.blue, { font: 'bold', spacing: 0.5, align: 'center' });
+        if (cv.target && back) cv.target(bx, byy, 132, 32, back, 'dash-back', 8);
+
+        // right: the G-meter
+        const gx = PC.x + PC.w / 2, gyy = PC.y + 232, gr = 126, max = Number(this.get('gRange')) || 1.2;
+        T(cv, 'G-FORCE', PC.x + 28, PC.y + 46, 20, L.blue, { font: 'bold', spacing: 3 });
+        const comb = Math.sqrt(this.shown.lat * this.shown.lat + this.shown.long * this.shown.long);
+        T(cv, comb.toFixed(2) + ' G', PC.x + PC.w - 28, PC.y + 50, 28, comb > 0.9 ? L.red : L.white, { font: 'num', align: 'right' });
+        [1 / 3, 2 / 3, 1].forEach((f, i) => cv.arc(gx, gyy, gr * f - 1.3, gr * f + 1.3, 0, 360, withAlpha(L.edge, i === 2 ? 0.9 : 0.35)));
+        cv.line(gx - gr, gyy, gx + gr, gyy, 1, withAlpha(L.edge, 0.35)); cv.line(gx, gyy - gr, gx, gyy + gr, 1, withAlpha(L.edge, 0.35));
+        const flipLong = this.get('gFlipLong') === true, ySign = flipLong ? 1 : -1;
+        T(cv, flipLong ? 'BRAKE' : 'ACCEL', gx, gyy - gr - 14, 13, L.dim, { font: 'bold', align: 'center', spacing: 2 });
+        T(cv, flipLong ? 'ACCEL' : 'BRAKE', gx, gyy + gr + 26, 13, L.dim, { font: 'bold', align: 'center', spacing: 2 });
+        const P = (lat, lon) => [gx - clamp(lat / max, -1.05, 1.05) * gr, gyy + ySign * clamp(lon / max, -1.05, 1.05) * gr];
+        const tr = S.trail, n = tr.length;
+        tr.forEach((sm, i) => { if (i % 2) return; const p = P(sm[1], sm[2]); cv.circle(p[0], p[1], 3.5, withAlpha(L.blue, 0.08 + 0.5 * (i / n))); });
+        const bp = P(this.shown.lat, this.shown.long);
+        cv.circle(bp[0], bp[1], 20, withAlpha(L.red, 0.18)); cv.circle(bp[0], bp[1], 11, withAlpha(L.red, 0.5)); cv.circle(bp[0], bp[1], 6, L.red); cv.circle(bp[0], bp[1], 2.5, L.white);
+        T(cv, 'TORQUE  NM', PC.x + 28, PC.y + PC.h - 56, 14, L.dim, { font: 'bold', spacing: 1.5 });
+        T(cv, fmt(d.torque, 0), PC.x + PC.w - 28, PC.y + PC.h - 50, 30, L.white, { font: 'num', align: 'right' });
+        this.segs(cv, PC.x + 28, PC.y + PC.h - 36, PC.w - 56, 9, isNum(d.torque) ? clamp(d.torque / 500, 0, 1) : 0, 26);
+    }
+
+    /** a segmented bar: n segments, the first f of it lit, blue to orange to red */
+    segs(cv, x, y, w, h, f, n) {
+        const gap = 3, sw = (w - gap * (n - 1)) / n;
+        for (let i = 0; i < n; i++) {
+            const p = (i + 0.5) / n, lit = p <= f;
+            cv.fillRect(x + i * (sw + gap), y, sw, h, lit ? (p > 0.85 ? L.red : p > 0.62 ? L.orange : L.blue) : withAlpha('#ffffff', 0.12));
+        }
     }
 
     vitals(cv, d) {
