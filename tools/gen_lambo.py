@@ -115,7 +115,7 @@ for name, (cx, tx), cy in [('FL', (220, 272), 262), ('FR', (369, 419), 262), ('R
 rule('sep1', 72, 466, 332)
 icon('dt_i', 'drivetrain', 62, 361, 30)
 text('dt_h', 91, 362, 'DRIVETRAIN', 'l_head', 'fg')
-text('dt_v', 91, 393, 'RWD', 'l_big', 'red')
+text('dt_v', 91, 393, 'AWD', 'l_big', 'red')
 rule('sep2', 29, 379, 429)
 
 
