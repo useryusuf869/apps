@@ -302,7 +302,7 @@ class SynthDash {
         dial(LX, LY, LR, 'reserve', { size: 22, scales: [{ start: -110, sweep: 200, n: 5, minor: 4, labels: ['0', '20', '40', '60', '80', '100'], lr: 0.62 }] });
         needle(LX, LY, -110 + (1 - pw / 100) * 200, LR * 0.86, 34);
         hub(LX, LY, 34);
-        lab('OIL ' + fmt(temp(d.oil, mph), 0) + (mph ? '°F' : '°C'), LX, LY + LR * 0.6 + 6, 17);
+        lab('ÖL ' + fmt(temp(d.oil, mph), 0) + (mph ? '°F' : '°C'), LX, LY + LR * 0.6 + 6, 17);
 
         // right: fuel E-F (left) and coolant H-C (right), the gear on top, clock and coolant underneath
         const RX = 1244, RY = 264, RR = 193, fu = isNum(d.fuel) ? clamp(d.fuel, 0, 1) : 0;
@@ -377,7 +377,7 @@ class SynthDash {
         cv.circle(b[0], b[1], 14, withAlpha(K.amber, 0.30));
         cv.circle(b[0], b[1], 7, K.amber);
         const comb = Math.sqrt(this.shown.lat * this.shown.lat + this.shown.long * this.shown.long);
-        T(cv, comb.toFixed(2) + ' G', PB.x + PB.w - 26, PB.y + 44, 28, comb > 0.9 ? K.red : K.cream, { font: 'num', align: 'right' });
+        T(cv, comb.toFixed(2).replace('.', ',') + ' G', PB.x + PB.w - 26, PB.y + 44, 28, comb > 0.9 ? K.red : K.cream, { font: 'num', align: 'right' });
         // FAHRT
         frame(PC, 'FAHRT');
         const g = isNum(d.gear) ? (d.gear > 0 ? 'D' + d.gear : d.gear === 0 ? 'N' : 'R') : (d.stage || 'D');
@@ -387,7 +387,7 @@ class SynthDash {
         T(cv, g, PC.x + PC.w - 61, PC.y + 136, 36, '#0c0c0e', { font: 'bold', align: 'center' });
         const fu = isNum(d.fuel) ? clamp(d.fuel, 0, 1) : null;
         [['HÖCHSTGESCHWINDIGKEIT', fmt(V(S.vmax), 0) + (mph ? ' MPH' : ' KM/H')], ['MAX. DREHZAHL', fmt(S.rpmMax, 0) + ' /MIN'],
-            ['MAX. G-KRAFT', S.gMax > 0.005 ? S.gMax.toFixed(2) + ' G' : '-.--'], ['REICHWEITE', isNum(d.range) ? Math.round(V(d.range)) + (mph ? ' MI' : ' KM') : '--'],
+            ['MAX. G-KRAFT', S.gMax > 0.005 ? S.gMax.toFixed(2).replace('.', ',') + ' G' : '-,--'], ['REICHWEITE', isNum(d.range) ? Math.round(V(d.range)) + (mph ? ' MI' : ' KM') : '--'],
             ['TANKFÜLLUNG', fu === null ? '--' : Math.round(fu * 100) + ' %']].forEach(([l, v], i) => {
             const y = PC.y + 226 + i * 44;
             T(cv, l, PC.x + 26, y, 13, K.dim, { font: 'bold', spacing: 1.2 });
@@ -411,13 +411,13 @@ class SynthDash {
 
         // left: the engine's vitals with segmented bars
         const x = PA.x + 28, r = PA.x + PA.w - 28;
-        T(cv, 'ENGINE', x, PA.y + 46, 20, L.blue, { font: 'bold', spacing: 3 });
+        T(cv, 'MOTOR', x, PA.y + 46, 20, L.blue, { font: 'bold', spacing: 3 });
         const rows = [
-            [mph ? 'SPEED  MPH' : 'SPEED  KM/H', V(d.speed), 0, mph ? 160 : 260],
-            ['RPM', d.rpm, 0, 7000],
-            [mph ? 'OIL  °F' : 'OIL  °C', temp(d.oil, mph), mph ? 100 : 40, mph ? 280 : 140],
-            [mph ? 'COOLANT  °F' : 'COOLANT  °C', temp(d.coolant, mph), mph ? 100 : 40, mph ? 270 : 130],
-            ['TORQUE  NM', d.torque, 0, 500],
+            [mph ? 'TEMPO  MPH' : 'TEMPO  KM/H', V(d.speed), 0, mph ? 160 : 260],
+            ['DREHZAHL  U/MIN', d.rpm, 0, 7000],
+            [mph ? 'ÖL  °F' : 'ÖL  °C', temp(d.oil, mph), mph ? 100 : 40, mph ? 280 : 140],
+            [mph ? 'KÜHLMITTEL  °F' : 'KÜHLMITTEL  °C', temp(d.coolant, mph), mph ? 100 : 40, mph ? 270 : 130],
+            ['DREHMOMENT  NM', d.torque, 0, 500],
         ];
         rows.forEach(([label, v, lo, hi], i) => {
             const y = PA.y + 96 + i * 52;
@@ -426,13 +426,13 @@ class SynthDash {
             this.segs(cv, x, y + 14, r - x, 9, isNum(v) ? clamp((v - lo) / (hi - lo), 0, 1) : 0, 26);
         });
         const by = PA.y + 96 + 5 * 52 + 10;
-        T(cv, 'BEST', x, by + 12, 16, L.blue, { font: 'bold', spacing: 3 });
+        T(cv, 'BESTWERTE', x, by + 12, 16, L.blue, { font: 'bold', spacing: 3 });
         T(cv, 'ZURÜCKSETZEN', r, by + 12, 13, L.dim, { font: 'bold', spacing: 1, align: 'right' });
         if (cv.target) cv.target(r - 170, by - 12, 170, 36, () => this.newSession(), 'dash-reset', 8);
-        [['TOP ' + (mph ? 'MPH' : 'KM/H'), fmt(V(S.vmax), 0)], ['MAX RPM', fmt(S.rpmMax, 0)], ['MAX G', S.gMax > 0.005 ? S.gMax.toFixed(2) : '-.--']].forEach(([l, v], i) => {
+        [['SPITZE ' + (mph ? 'MPH' : 'KM/H'), fmt(V(S.vmax), 0)], ['MAX U/MIN', fmt(S.rpmMax, 0)], ['MAX G', S.gMax > 0.005 ? S.gMax.toFixed(2).replace('.', ',') : '-,--']].forEach(([l, v], i) => {
             const cx0 = x + i * 146;
             T(cv, l, cx0, by + 40, 13, L.dim, { font: 'bold', spacing: 1 });
-            T(cv, v, cx0, by + 70, 28, v === '--' || v === '-.--' ? withAlpha(L.white, 0.35) : L.white, { font: 'num' });
+            T(cv, v, cx0, by + 70, 28, v === '--' || v === '-,--' ? withAlpha(L.white, 0.35) : L.white, { font: 'num' });
         });
 
         // middle: the rev arc with 0-7 inside, the hollow gear, the speed
@@ -449,7 +449,7 @@ class SynthDash {
             const a = (A0 + SW * k / 7) * Math.PI / 180, rr = R1 - 26;
             T(cv, String(k), cx + Math.sin(a) * rr, cy - Math.cos(a) * rr + 9, 22, k >= 6 ? L.red : L.white, { font: 'num', align: 'center' });
         }
-        T(cv, 'RPM X 1000', PB.x + 40, PB.y + PB.h - 62, 12, L.dim, { font: 'bold', spacing: 1 });
+        T(cv, 'U/MIN X 1000', PB.x + 40, PB.y + PB.h - 62, 12, L.dim, { font: 'bold', spacing: 1 });
         const g = isNum(d.gear) ? (d.gear > 0 ? String(d.gear) : d.gear === 0 ? 'N' : 'R') : '-';
         const gy = PB.y + 268;
         [[-3, 0], [3, 0], [0, -3], [0, 3], [-2.2, -2.2], [2.2, 2.2], [-2.2, 2.2], [2.2, -2.2]].forEach((o) => T(cv, g, cx + o[0], gy + o[1], 124, L.red, { font: 'bold', align: 'center' }));
@@ -465,20 +465,20 @@ class SynthDash {
 
         // right: the G-meter
         const gx = PC.x + PC.w / 2, gyy = PC.y + 232, gr = 126, max = Number(this.get('gRange')) || 1.2;
-        T(cv, 'G-FORCE', PC.x + 28, PC.y + 46, 20, L.blue, { font: 'bold', spacing: 3 });
+        T(cv, 'G-KRÄFTE', PC.x + 28, PC.y + 46, 20, L.blue, { font: 'bold', spacing: 3 });
         const comb = Math.sqrt(this.shown.lat * this.shown.lat + this.shown.long * this.shown.long);
-        T(cv, comb.toFixed(2) + ' G', PC.x + PC.w - 28, PC.y + 50, 28, comb > 0.9 ? L.red : L.white, { font: 'num', align: 'right' });
+        T(cv, comb.toFixed(2).replace('.', ',') + ' G', PC.x + PC.w - 28, PC.y + 50, 28, comb > 0.9 ? L.red : L.white, { font: 'num', align: 'right' });
         [1 / 3, 2 / 3, 1].forEach((f, i) => cv.arc(gx, gyy, gr * f - 1.3, gr * f + 1.3, 0, 360, withAlpha(L.edge, i === 2 ? 0.9 : 0.35)));
         cv.line(gx - gr, gyy, gx + gr, gyy, 1, withAlpha(L.edge, 0.35)); cv.line(gx, gyy - gr, gx, gyy + gr, 1, withAlpha(L.edge, 0.35));
         const flipLong = this.get('gFlipLong') === true, ySign = flipLong ? 1 : -1;
-        T(cv, flipLong ? 'BRAKE' : 'ACCEL', gx, gyy - gr - 14, 13, L.dim, { font: 'bold', align: 'center', spacing: 2 });
-        T(cv, flipLong ? 'ACCEL' : 'BRAKE', gx, gyy + gr + 26, 13, L.dim, { font: 'bold', align: 'center', spacing: 2 });
+        T(cv, flipLong ? 'BREMSEN' : 'BESCHL.', gx, gyy - gr - 14, 13, L.dim, { font: 'bold', align: 'center', spacing: 2 });
+        T(cv, flipLong ? 'BESCHL.' : 'BREMSEN', gx, gyy + gr + 26, 13, L.dim, { font: 'bold', align: 'center', spacing: 2 });
         const P = (lat, lon) => [gx - clamp(lat / max, -1.05, 1.05) * gr, gyy + ySign * clamp(lon / max, -1.05, 1.05) * gr];
         const tr = S.trail, n = tr.length;
         tr.forEach((sm, i) => { if (i % 2) return; const p = P(sm[1], sm[2]); cv.circle(p[0], p[1], 3.5, withAlpha(L.blue, 0.08 + 0.5 * (i / n))); });
         const bp = P(this.shown.lat, this.shown.long);
         cv.circle(bp[0], bp[1], 20, withAlpha(L.red, 0.18)); cv.circle(bp[0], bp[1], 11, withAlpha(L.red, 0.5)); cv.circle(bp[0], bp[1], 6, L.red); cv.circle(bp[0], bp[1], 2.5, L.white);
-        T(cv, 'TORQUE  NM', PC.x + 28, PC.y + PC.h - 56, 14, L.dim, { font: 'bold', spacing: 1.5 });
+        T(cv, 'DREHMOMENT  NM', PC.x + 28, PC.y + PC.h - 56, 14, L.dim, { font: 'bold', spacing: 1.5 });
         T(cv, fmt(d.torque, 0), PC.x + PC.w - 28, PC.y + PC.h - 50, 30, L.white, { font: 'num', align: 'right' });
         this.segs(cv, PC.x + 28, PC.y + PC.h - 36, PC.w - 56, 9, isNum(d.torque) ? clamp(d.torque / 500, 0, 1) : 0, 26);
     }
@@ -496,14 +496,14 @@ class SynthDash {
         const S = this.S, mph = this.mph(), V = (k) => (isNum(k) ? (mph ? k / MPH : k) : null);
         panelFrame(cv, PA, C.pink);
         const x = PA.x + 26, r = PA.x + PA.w - 26;
-        T(cv, 'VITALS', x, PA.y + 52, 28, C.pink, { font: 'bold', spacing: 4 });
+        T(cv, 'MOTORDATEN', x, PA.y + 52, 28, C.pink, { font: 'bold', spacing: 4 });
         cv.line(x, PA.y + 66, r, PA.y + 66, 2, withAlpha(C.pink, 0.6));
         const rows = [
-            [mph ? 'SPEED  MPH' : 'SPEED  KM/H', V(d.speed), 0, mph ? 160 : 260],
-            ['RPM', d.rpm, 0, 7000],
-            [mph ? 'OIL  °F' : 'OIL  °C', temp(d.oil, mph), mph ? 100 : 40, mph ? 280 : 140],
-            [mph ? 'COOLANT  °F' : 'COOLANT  °C', temp(d.coolant, mph), mph ? 100 : 40, mph ? 270 : 130],
-            ['TORQUE  NM', d.torque, 0, 500],
+            [mph ? 'TEMPO  MPH' : 'TEMPO  KM/H', V(d.speed), 0, mph ? 160 : 260],
+            ['DREHZAHL  U/MIN', d.rpm, 0, 7000],
+            [mph ? 'ÖL  °F' : 'ÖL  °C', temp(d.oil, mph), mph ? 100 : 40, mph ? 280 : 140],
+            [mph ? 'KÜHLMITTEL  °F' : 'KÜHLMITTEL  °C', temp(d.coolant, mph), mph ? 100 : 40, mph ? 270 : 130],
+            ['DREHMOMENT  NM', d.torque, 0, 500],
         ];
         rows.forEach(([label, v, lo, hi], i) => {
             const y = PA.y + 108 + i * 50;
@@ -519,11 +519,11 @@ class SynthDash {
         // tap the heading's right end to start the bests again
         T(cv, 'ZURÜCKSETZEN', r, by, 15, C.violet, { font: 'bold', spacing: 1, align: 'right' });
         if (cv.target) cv.target(r - 170, by - 24, 170, 40, () => this.newSession(), 'dash-reset', 8);
-        const cols = [['TOP ' + (mph ? 'MPH' : 'KM/H'), fmt(V(S.vmax), 0)], ['MAX RPM', fmt(S.rpmMax, 0)], ['MAX G', S.gMax > 0.005 ? S.gMax.toFixed(2) : '-.--']];
+        const cols = [['SPITZE ' + (mph ? 'MPH' : 'KM/H'), fmt(V(S.vmax), 0)], ['MAX U/MIN', fmt(S.rpmMax, 0)], ['MAX G', S.gMax > 0.005 ? S.gMax.toFixed(2).replace('.', ',') : '-,--']];
         cols.forEach(([l, v], i) => {
             const cx0 = x + i * 148;
             T(cv, l, cx0, by + 38, 16, C.violet, { font: 'bold', spacing: 1 });
-            T(cv, v, cx0, by + 74, 34, v === '--' || v === '-.--' ? withAlpha(C.cyan, 0.35) : C.cyan, { font: 'num' });
+            T(cv, v, cx0, by + 74, 34, v === '--' || v === '-,--' ? withAlpha(C.cyan, 0.35) : C.cyan, { font: 'num' });
         });
     }
 
@@ -547,7 +547,7 @@ class SynthDash {
         T(cv, mph ? 'MPH' : 'KM/H', PB.x + 38, PB.y + 152, 20, C.violet, { font: 'bold', spacing: 2 });
         const gtxt = isNum(d.gear) ? (d.gear > 0 ? 'D' + d.gear : d.gear === 0 ? 'N' : 'R') : 'D';
         T(cv, gtxt, PB.x + PB.w - 34, PB.y + 120, 78, C.pink, { font: 'num', align: 'right' });
-        T(cv, 'GEAR', PB.x + PB.w - 38, PB.y + 152, 20, C.violet, { font: 'bold', spacing: 2, align: 'right' });
+        T(cv, 'GANG', PB.x + PB.w - 38, PB.y + 152, 20, C.violet, { font: 'bold', spacing: 2, align: 'right' });
         T(cv, 'SYNTHWAVE', PB.x + PB.w / 2, PB.y + 52, 22, withAlpha(C.violet, 0.9), { font: 'bold', spacing: 6, align: 'center' });
         // back to the page's tabs
         const bx = PB.x + 14, by = PB.y + PB.h - 44;
@@ -575,8 +575,8 @@ class SynthDash {
             cv.line(cx + s * (r + 10), cy - co * (r + 10), cx + s * (r + 20), cy - co * (r + 20), a % 90 ? 1.5 : 3, withAlpha(C.cyan, 0.8));
         }
         const flipLong = this.get('gFlipLong') === true;
-        T(cv, flipLong ? 'BRAKE' : 'ACCEL', cx, cy - r - 28, 16, C.violet, { font: 'bold', align: 'center', spacing: 2 });
-        T(cv, flipLong ? 'ACCEL' : 'BRAKE', cx, cy + r + 36, 16, C.violet, { font: 'bold', align: 'center', spacing: 2 });
+        T(cv, flipLong ? 'BREMSEN' : 'BESCHL.', cx, cy - r - 28, 16, C.violet, { font: 'bold', align: 'center', spacing: 2 });
+        T(cv, flipLong ? 'BESCHL.' : 'BREMSEN', cx, cy + r + 36, 16, C.violet, { font: 'bold', align: 'center', spacing: 2 });
         const a = (now / 1000 * 100) % 360;
         for (let k = 0; k < 14; k++) cv.arc(cx, cy, 0, r, a - (k + 1) * 4, a - k * 4, withAlpha(C.cyan, 0.30 * (1 - k / 14)));
         const rad = a * Math.PI / 180;
@@ -592,7 +592,7 @@ class SynthDash {
         cv.circle(b[0], b[1], 7, C.pink);
         cv.circle(b[0], b[1], 3, C.white);
         const comb = Math.sqrt(this.shown.lat * this.shown.lat + this.shown.long * this.shown.long);
-        T(cv, comb.toFixed(2) + ' G', PC.x + PC.w - 26, PC.y + 52, 30, comb > 0.9 ? C.pink : C.cyan, { font: 'num', align: 'right' });
+        T(cv, comb.toFixed(2).replace('.', ',') + ' G', PC.x + PC.w - 26, PC.y + 52, 30, comb > 0.9 ? C.pink : C.cyan, { font: 'num', align: 'right' });
     }
 }
 
