@@ -1761,7 +1761,7 @@ vec3 needle(vec3 col, vec2 p, float ang, float R) {
     float d = length(p);
     float hr = R * 0.085;
     if (d < hr * 1.25) col = mix(col, vec3(0.02), 0.95 * clamp((hr * 1.25 - d), 0.0, 1.0));
-    if (d < hr) col = mix(vec3(0.07), vec3(0.30), smoothstep(hr, 0.0, d) * 0.55 + 0.1 * clamp(p.y / hr, 0.0, 1.0));
+    if (d < hr) col = mix(vec3(0.07), vec3(0.30), (1.0 - smoothstep(0.0, hr, d)) * 0.55 + 0.1 * clamp(p.y / hr, 0.0, 1.0));
     return col;
 }
 vec3 window(vec3 col, vec2 p, vec2 c, vec2 h) {
