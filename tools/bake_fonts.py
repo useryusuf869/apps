@@ -117,7 +117,17 @@ CLUSTER_FONTS = [
     ('c_small', 'Barlow-Medium.ttf', 22, UPPER + LOWER + DIGITS + ' -/.:%\u00b0'),
     ('c_gear', 'BarlowSemiCondensed-SemiBold.ttf', 52, 'PRND' + DIGITS),
 ]
-FONTS = {'idrive_hud_widgets': HUD_FONTS, 'cluster_themes': CLUSTER_FONTS}
+
+# Klassik: the 1980s BMW cluster's Helvetica-style print (Liberation Sans, SIL OFL), after a photo of the real dials
+KLASSIK_FONTS = [
+    ('k_num', 'LiberationSans-Bold.ttf', 40, DIGITS),
+    ('k_numL', 'LiberationSans-Bold.ttf', 46, DIGITS),
+    ('k_txt', 'LiberationSansNarrow-Bold.ttf', 24, UPPER + LOWER + DIGITS + ' -/.:%\u00b0\u00c4\u00d6\u00dc\u00df\u00d8'),
+    ('k_small', 'LiberationSansNarrow-Bold.ttf', 18, UPPER + LOWER + DIGITS + ' -/.:%\u00b0\u00c4\u00d6\u00dc\u00df\u00d8'),
+    ('k_odo', 'LiberationSans-Bold.ttf', 40, DIGITS + '.-'),
+    ('k_gear', 'LiberationSans-Bold.ttf', 48, 'PRND' + DIGITS),
+]
+FONTS = {'idrive_hud_widgets': HUD_FONTS, 'cluster_themes': CLUSTER_FONTS, 'yusuf_dash': KLASSIK_FONTS}
 PAD = 2
 ATLAS_W = 1024
 

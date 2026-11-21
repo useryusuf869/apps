@@ -1651,7 +1651,7 @@ class HudApp {
             c = this._clientAt(this._connOf(w));
             const base = { target: this.target, klass: w.class || 'content', z: w.z || 0, x: w.x, y: w.y, w: w.w, h: w.h };
             if (IMAGE_TYPES[w.type]) ref = c.image(Object.assign({ iw: w.w, ih: w.h }, base));
-            else ref = c.effect(Object.assign({ fs: w.type === 'swatch' ? calibration.SWATCH : w.type === 'lambo' ? this._lamboSource(w) : shaders[w.type] }, base));
+            else ref = c.effect(Object.assign({ fs: w.type === 'swatch' ? calibration.SWATCH : w.type === 'lambo' ? this._lamboSource(w) : w.type === 'klassikdash' ? shaders.klassikBuild(w) : shaders[w.type] }, base));
             if (!ref) { this.log.warn('widget "' + w.id + '": layer refused'); return; }
             this.placed.push({ c, ref, x: w.x, y: w.y, w: w.w, h: w.h });
         }
@@ -1791,6 +1791,9 @@ class HudApp {
             c.uniform(ref, 'u_tick', rgb(color(t, 'fg')));
             c.uniform(ref, 'u_needle', rgb(color(t, 'chrome')));
             c.uniform(ref, 'u_hot', rgb(t.hot));
+        } else if (w.type === 'klassikdash') {
+            c.uniform(ref, 'u_size', [w.w, w.h]);
+            c.uniform(ref, 'u_v', [0, 0, 0, 0.5]);
         } else if (w.type === 'chromedial') {
             const us = this.setting('units') === 'us', k = w.kind || 'speed';
             const r = (v) => v * Math.PI / 180;
@@ -2233,6 +2236,16 @@ class HudApp {
             x.last = key;
             x.c.uniform(x.ref, 'u_value', [q]);
             x.c.uniform(x.ref, 'u_hot', [hot]);
+        } else if (w.type === 'klassikdash') {
+            // speed 0..220 km/h, rpm 0..7000, fuel 0..1, coolant 50..120 C; sent only when one moved
+            const q = (v) => Math.round(Math.min(1, Math.max(0, v)) * 500) / 500;
+            const sp = this._raw('speed'), rp = this.rpmF, fu = this._raw('fuel'), cl = this._raw('coolant');
+            const r = isNum(rp) ? rp : this._raw('rpm');
+            const v = [isNum(sp) ? q(sp / 220) : 0, isNum(r) ? q(r / 7000) : 0, isNum(fu) ? q(fu) : 0, isNum(cl) ? q((cl - 50) / 70) : 0.5];
+            const key = v.join(',');
+            if (!force && x.kd === key) return;
+            x.kd = key;
+            x.c.uniform(x.ref, 'u_v', v);
         } else if (w.type === 'chromedash') {
             const us = this.setting('units') === 'us', DD = Array.isArray(w.dials) ? w.dials.slice(0, 3) : [];
             const q = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1000) / 1000, val = [];

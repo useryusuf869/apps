@@ -203,6 +203,8 @@ class SynthDash {
             this.radar(cv, now);
         } else if (this.get('dashStyle') === 'chrome') {
             this.chrome(cv, d, back);
+        } else if (this.get('dashStyle') === 'klassik') {
+            this.klassik(cv, d, back);
         } else {
             this.lambo(cv, d, back);
         }
@@ -212,9 +214,9 @@ class SynthDash {
     /** the little switch between the two looks, bottom middle */
     styleButton(cv) {
         const st = this.get('dashStyle'), bx = PB.x + PB.w - 146, by = PB.y + PB.h - 44;
-        const col = st === 'synthwave' ? C.cyan : st === 'chrome' ? '#e4e4de' : '#28a0ff';
-        const name = st === 'synthwave' ? 'SYNTHWAVE' : st === 'chrome' ? 'CHROM' : 'LAMBO';
-        const nxt = st === 'synthwave' ? 'chrome' : st === 'chrome' ? 'lambo' : 'synthwave';
+        const col = st === 'synthwave' ? C.cyan : st === 'chrome' ? '#e4e4de' : st === 'klassik' ? '#e8a030' : '#28a0ff';
+        const name = st === 'synthwave' ? 'SYNTHWAVE' : st === 'chrome' ? 'CHROM' : st === 'klassik' ? 'KLASSIK' : 'LAMBO';
+        const nxt = st === 'synthwave' ? 'chrome' : st === 'chrome' ? 'klassik' : st === 'klassik' ? 'lambo' : 'synthwave';
         cv.roundRect(bx, by, 132, 32, 8, withAlpha('#000000', 0.55));
         cv.strokeRoundRect(bx, by, 132, 32, 8, 1.5, withAlpha(col, 0.8));
         T(cv, 'STIL: ' + name, bx + 66, by + 22, 14, col, { font: 'bold', spacing: 0.5, align: 'center' });
@@ -320,6 +322,83 @@ class SynthDash {
         cv.roundRect(bx, by, 132, 32, 8, withAlpha('#000000', 0.55));
         cv.strokeRoundRect(bx, by, 132, 32, 8, 1.5, withAlpha('#e4e4de', 0.8));
         T(cv, '<  ZURÜCK', bx + 66, by + 22, 14, '#e4e4de', { font: 'bold', spacing: 0.5, align: 'center' });
+        if (cv.target && back) cv.target(bx, by, 132, 32, back, 'dash-back', 8);
+    }
+
+    /**
+     * Klassik: the centre screen to the 1980s cluster, but with the data the cluster doesn't show: MOTOR (oil, coolant,
+     * torque, power, revs as bars), G-KRÄFTE (the friction circle with a 3 second trail) and FAHRT (this drive's bests,
+     * range and tank). Black, cream print and an amber accent, like the lit lettering of the old instruments.
+     */
+    klassik(cv, d, back) {
+        const mph = this.mph(), V = (k) => (isNum(k) ? (mph ? k / MPH : k) : null), S = this.S;
+        const K = { panel: '#0f0f11', edge: '#3a3a3e', cream: '#ecece6', dim: '#8c8c88', amber: '#e8a030', red: '#d8321f', green: '#46c86e', blue: '#4aa0e8' };
+        cv.fillRect(0, 0, 1600, 520, '#050506');
+        const frame = (r, title) => {
+            cv.roundRect(r.x, r.y, r.w, r.h, 10, K.panel);
+            cv.strokeRoundRect(r.x, r.y, r.w, r.h, 10, 2, K.edge);
+            T(cv, title, r.x + 26, r.y + 44, 24, K.amber, { font: 'bold', spacing: 3 });
+            cv.line(r.x + 26, r.y + 58, r.x + r.w - 26, r.y + 58, 1.5, K.edge);
+        };
+        const T0 = (v, lo, hi) => (isNum(v) ? clamp((v - lo) / (hi - lo), 0, 1) : 0);
+        // MOTOR
+        frame(PA, 'MOTOR');
+        const tv = (x) => temp(x, mph), unitT = mph ? '°F' : '°C';
+        const rows = [
+            ['ÖLTEMPERATUR', fmt(tv(d.oil), 0) + unitT, T0(d.oil, 40, 140), d.oil > 125 ? K.red : K.cream, 0.82],
+            ['KÜHLMITTEL', fmt(tv(d.coolant), 0) + unitT, T0(d.coolant, 40, 130), d.coolant > 108 ? K.red : K.cream, 0.78],
+            ['DREHMOMENT', fmt(d.torque, 0) + ' NM', T0(d.torque, 0, 500), K.cream, 2],
+            ['LEISTUNG', fmt(d.powerPct, 0) + ' %', T0(d.powerPct, 0, 100), K.cream, 2],
+            ['DREHZAHL', fmt(d.rpm, 0) + ' /MIN', T0(d.rpm, 0, 7000), K.cream, 0.93],
+        ];
+        rows.forEach((r, i) => {
+            const y = PA.y + 96 + i * 72;
+            T(cv, r[0], PA.x + 26, y, 14, K.dim, { font: 'bold', spacing: 1.5 });
+            T(cv, r[1], PA.x + PA.w - 26, y + 6, 30, r[3], { font: 'num', align: 'right' });
+            const bw = PA.w - 52;
+            cv.fillRect(PA.x + 26, y + 18, bw, 12, withAlpha('#ffffff', 0.10));
+            cv.fillRect(PA.x + 26, y + 18, bw * r[2], 12, r[2] > r[4] ? K.red : K.amber);
+            for (let k = 1; k < 10; k++) cv.fillRect(PA.x + 26 + bw * k / 10 - 0.5, y + 18, 1.2, 12, '#0f0f11');
+        });
+        // G-KRÄFTE
+        frame(PB, 'G-KRÄFTE');
+        const cx = PB.x + PB.w / 2, cy = PB.y + 240, r = 148, max = Number(this.get('gRange')) || 1.2;
+        [1 / 3, 2 / 3, 1].forEach((f, i) => cv.arc(cx, cy, r * f - 1, r * f + 1, 0, 360, withAlpha(K.cream, i === 2 ? 0.7 : 0.28)));
+        cv.line(cx - r, cy, cx + r, cy, 1.2, withAlpha(K.cream, 0.35));
+        cv.line(cx, cy - r, cx, cy + r, 1.2, withAlpha(K.cream, 0.35));
+        const flipLong = this.get('gFlipLong') === true;
+        T(cv, flipLong ? 'BREMSEN' : 'BESCHLEUNIGEN', cx, cy - r - 14, 14, K.dim, { font: 'bold', align: 'center', spacing: 1.5 });
+        T(cv, flipLong ? 'BESCHLEUNIGEN' : 'BREMSEN', cx, cy + r + 28, 14, K.dim, { font: 'bold', align: 'center', spacing: 1.5 });
+        const ySign = flipLong ? 1 : -1;
+        const P = (lat, lon) => [cx - clamp(lat / max, -1.05, 1.05) * r, cy + ySign * clamp(lon / max, -1.05, 1.05) * r];
+        const tr = S.trail, n = tr.length;
+        tr.forEach((q, i) => { if (i % 2) return; const p = P(q[1], q[2]); cv.circle(p[0], p[1], 3.5, withAlpha(K.amber, 0.08 + 0.5 * (i / n))); });
+        const b = P(this.shown.lat, this.shown.long);
+        cv.circle(b[0], b[1], 14, withAlpha(K.amber, 0.30));
+        cv.circle(b[0], b[1], 7, K.amber);
+        const comb = Math.sqrt(this.shown.lat * this.shown.lat + this.shown.long * this.shown.long);
+        T(cv, comb.toFixed(2) + ' G', PB.x + PB.w - 26, PB.y + 44, 28, comb > 0.9 ? K.red : K.cream, { font: 'num', align: 'right' });
+        // FAHRT
+        frame(PC, 'FAHRT');
+        const g = isNum(d.gear) ? (d.gear > 0 ? 'D' + d.gear : d.gear === 0 ? 'N' : 'R') : (d.stage || 'D');
+        T(cv, fmt(V(d.speed), 0), PC.x + 26, PC.y + 150, 84, K.cream, { font: 'num' });
+        T(cv, mph ? 'MPH' : 'KM/H', PC.x + 26, PC.y + 182, 18, K.dim, { font: 'bold', spacing: 2 });
+        cv.roundRect(PC.x + PC.w - 96, PC.y + 96, 70, 56, 6, K.green);
+        T(cv, g, PC.x + PC.w - 61, PC.y + 136, 36, '#0c0c0e', { font: 'bold', align: 'center' });
+        const fu = isNum(d.fuel) ? clamp(d.fuel, 0, 1) : null;
+        [['HÖCHSTGESCHWINDIGKEIT', fmt(V(S.vmax), 0) + (mph ? ' MPH' : ' KM/H')], ['MAX. DREHZAHL', fmt(S.rpmMax, 0) + ' /MIN'],
+            ['MAX. G-KRAFT', S.gMax > 0.005 ? S.gMax.toFixed(2) + ' G' : '-.--'], ['REICHWEITE', isNum(d.range) ? Math.round(V(d.range)) + (mph ? ' MI' : ' KM') : '--'],
+            ['TANKFÜLLUNG', fu === null ? '--' : Math.round(fu * 100) + ' %']].forEach(([l, v], i) => {
+            const y = PC.y + 226 + i * 44;
+            T(cv, l, PC.x + 26, y, 13, K.dim, { font: 'bold', spacing: 1.2 });
+            T(cv, v, PC.x + PC.w - 26, y + 4, 24, K.cream, { font: 'num', align: 'right' });
+        });
+        T(cv, 'ZURÜCKSETZEN', PC.x + PC.w - 26, PC.y + PC.h - 22, 13, K.dim, { font: 'bold', spacing: 1, align: 'right' });
+        if (cv.target) cv.target(PC.x + PC.w - 196, PC.y + PC.h - 46, 170, 36, () => this.newSession(), 'dash-reset', 8);
+        const bx = PB.x + 14, by = PB.y + PB.h - 44;
+        cv.roundRect(bx, by, 132, 32, 8, withAlpha('#000000', 0.55));
+        cv.strokeRoundRect(bx, by, 132, 32, 8, 1.5, withAlpha(K.cream, 0.8));
+        T(cv, '<  ZURÜCK', bx + 66, by + 22, 14, K.cream, { font: 'bold', spacing: 0.5, align: 'center' });
         if (cv.target && back) cv.target(bx, by, 132, 32, back, 'dash-back', 8);
     }
 

@@ -180,6 +180,18 @@ const THEMES = {
         ink: [12, 12, 14, 255], accent: [220, 220, 216, 255], well: [0, 0, 0, 255],
         chrome: [226, 226, 222, 255], chrome2: [70, 70, 74, 255], green: [70, 200, 110, 255],
     },
+    // Klassik (layouts klassik.json): a 1980s BMW cluster, white print on dark grey dials, black needles' shadows, a red
+    // zone; the text widgets are the dial numbers and the odometer.
+    klassik: {
+        name: 'Klassik',
+        fg: [236, 236, 232, 255], dim: [150, 150, 148, 255], track: [255, 255, 255, 50], arc: [236, 236, 232, 255],
+        glow: 0, stripe: false,
+        bar: { low: [236, 236, 232], mid: [240, 200, 120], high: [230, 50, 40], midAt: 'shift' },
+        rev: { from: [236, 236, 232], to: [230, 50, 40] },
+        bg: [3, 3, 4, 255], panel: [20, 20, 22, 255], line: [236, 236, 232, 255], head: [200, 200, 196, 255],
+        ink: [12, 12, 14, 255], accent: [236, 236, 232, 255], well: [0, 0, 0, 255],
+        red: [230, 40, 30, 255], amber: [240, 170, 40, 255], green: [70, 200, 110, 255],
+    },
     // Cruise (layouts cruise.json): calm and quiet for the highway, soft white and a cool teal, no reds until needed.
     cruise: {
         name: 'Cruise',

@@ -25,7 +25,7 @@ mgu.run({
         hud.start();
         new Page(ctx, hud, {
             title: ctx.spec.title, what: 'cluster',
-            look: { name: 'Themes', style: 'hero', tags: { synthwave: 'Neon-Sonnenuntergang', lambo: 'Lambo x BMW', chrome: 'Chrom-Rundinstrumente' } },
+            look: { name: 'Themes', style: 'hero', tags: { synthwave: 'Neon-Sonnenuntergang', lambo: 'Lambo x BMW', chrome: 'Chrom-Rundinstrumente', klassik: 'BMW-Kombi der 80er' } },
             tabs: ['look', 'readouts', 'badge', 'map', 'alerts', 'gmeter', 'dash', 'settings'],
             settings: ['units', 'clock', 'timeZone', 'tankLitres', 'redline', 'shiftBefore', 'coldGuard', 'showBoost', 'nightDim', 'stripClear', 'demo'],
         }).start();

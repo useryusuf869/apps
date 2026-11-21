@@ -2,7 +2,7 @@
   "id": "yusuf_dash",
   "title": "Yusuf Dash",
   "description": "Yusufs eigene Dash-App: Tacho-Themes (u.a. Synthwave) und der Synthwave-Dash für den Mittelbildschirm in einer App",
-  "version": "1.1.8",
+  "version": "1.2.0",
   "vendor": "custom",
   "loggingId": "YDA1",
   "iconGlyph": "YDA",
@@ -117,6 +117,10 @@
           "Chrom"
         ],
         [
+          "klassik",
+          "Klassik (BMW 80er)"
+        ],
+        [
           "grid",
           "Kalibrierraster"
         ],
@@ -153,6 +157,10 @@
         [
           "chrome",
           "Chrom"
+        ],
+        [
+          "klassik",
+          "Klassik"
         ]
       ]
     },
@@ -177,6 +185,10 @@
         [
           "chrome",
           "Chrom"
+        ],
+        [
+          "klassik",
+          "Klassik"
         ]
       ]
     },
@@ -201,6 +213,10 @@
         [
           "chrome",
           "Chrom"
+        ],
+        [
+          "klassik",
+          "Klassik"
         ]
       ]
     },
@@ -885,6 +901,10 @@
         [
           "chrome",
           "Chrom"
+        ],
+        [
+          "klassik",
+          "Klassik"
         ]
       ]
     }

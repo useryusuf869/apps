@@ -1684,6 +1684,222 @@ ${rules}${bars}
 }
 const LAMBO = lamboBuild({}, null);
 
+// The Klassik theme: a 1980s BMW cluster (two round dials, the little gauges between them and the lamp strips) in ONE
+// opaque effect layer, drawn after a photo of the real thing. Static geometry is literal (see the Lamboshader's note:
+// the car's GPU takes only a few uniform vectors), the live values are u_v = (speed, rpm, fuel, coolant), each 0..1.
+function klassikBuild(w) {
+    const g = w.geo || {}, ox = w.x || 0, oy = w.y || 0;
+    const F = (v) => (Math.round(v * 100) / 100).toFixed(2);
+    const S = g.s || [520, 395], T = g.t || [1240, 395], R = g.R || 265;
+    const V2 = (x, y) => 'vec2(' + F(x - ox) + ',' + F(y - oy) + ')';
+    const box = (b) => 'vec2(' + F(b[0] + b[2] / 2 - ox) + ',' + F(b[1] + b[3] / 2 - oy) + '), vec2(' + F(b[2] / 2) + ',' + F(b[3] / 2) + ')';
+    const B = g.boxes || {};
+    const lamps = (g.lamps || []).map((l) => '    col = lamp(col, p, ' + V2(l.x, l.y) + ', ' + F(l.r) + ', ' + l.k + '.0);\n').join('');
+    const strips = (g.strips || []).map((b) => '    col = strip(col, p, ' + box(b) + ');\n').join('');
+    return `// The Klassik theme (a 1980s BMW cluster) in one cluster-render "effect" layer (GLSL ES 1.00), opaque.
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 v_uv;
+uniform vec2 u_size;
+uniform vec4 u_v;          // speed, rpm, fuel, coolant (0..1)
+const float PI = 3.14159265359;
+
+float rbox(vec2 p, vec2 c, vec2 h, float r) {
+    vec2 q = abs(p - c) - h + r;
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+float segd(vec2 p, vec2 a, vec2 b) {
+    vec2 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h);
+}
+vec3 face(vec3 col, vec2 p, float R) {
+    float d = length(p);
+    if (d > R + 1.0) return col;
+    float edge = clamp(R + 0.5 - d, 0.0, 1.0);
+    vec3 c;
+    if (d > R * 0.925) {
+        c = vec3(0.022) + vec3(0.13) * (1.0 - smoothstep(0.0, 3.5, abs(d - R + 2.5)));
+    } else {
+        float gr = 0.150 + 0.070 * smoothstep(0.1 * R, 0.92 * R, d) + 0.025 * (p.y / R);
+        c = vec3(gr * 0.97, gr, gr * 1.03);
+        c = mix(c, vec3(0.50), (1.0 - smoothstep(0.0, 1.8, abs(d - R * 0.925))) * 0.75);
+    }
+    return mix(col, c, edge);
+}
+vec3 ticks(vec3 col, vec2 p, float R, float start, float sweep, float steps, float every, float redFrom) {
+    float a = atan(p.x, p.y);
+    float rel = mod(a - start + 4.0 * PI, 2.0 * PI);
+    float k = floor(rel / sweep * steps + 0.5);
+    if (rel > sweep + 0.08 || k > steps) return col;
+    float ta = start + k / steps * sweep;
+    vec2 dir = vec2(sin(ta), cos(ta));
+    bool major = mod(k, every) < 0.5;
+    float len = major ? R * 0.115 : R * 0.065;
+    float wid = major ? R * 0.0095 : R * 0.0055;
+    vec2 pa = p - dir * (R * 0.90 - len);
+    vec2 ba = dir * len;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    float dd = length(pa - ba * h) - wid;
+    vec3 tc = (redFrom >= 0.0 && k >= redFrom) ? vec3(0.90, 0.12, 0.10) : vec3(0.93);
+    return mix(col, tc, clamp(0.5 - dd, 0.0, 1.0));
+}
+float nshape(vec2 p, float ang, float L, float tail, float w0) {
+    vec2 nd = vec2(sin(ang), cos(ang));
+    vec2 q = vec2(dot(p, vec2(nd.y, -nd.x)), dot(p, nd));
+    if (q.y < -tail || q.y > L) return 0.0;
+    float w = q.y < 0.0 ? w0 * (1.0 + q.y / tail * 0.35) : mix(w0, w0 * 0.22, q.y / L);
+    return clamp(w + 0.5 - abs(q.x), 0.0, 1.0);
+}
+vec3 needle(vec3 col, vec2 p, float ang, float R) {
+    float L = R * 0.87, tail = R * 0.17, w0 = R * 0.017;
+    col = mix(col, vec3(0.0), 0.5 * nshape(p - vec2(5.0, -6.0), ang, L, tail, w0));
+    col = mix(col, vec3(0.95, 0.95, 0.92), nshape(p, ang, L, tail, w0));
+    float d = length(p);
+    float hr = R * 0.085;
+    if (d < hr * 1.25) col = mix(col, vec3(0.02), 0.95 * clamp((hr * 1.25 - d), 0.0, 1.0));
+    if (d < hr) col = mix(vec3(0.07), vec3(0.30), smoothstep(hr, 0.0, d) * 0.55 + 0.1 * clamp(p.y / hr, 0.0, 1.0));
+    return col;
+}
+vec3 window(vec3 col, vec2 p, vec2 c, vec2 h) {
+    float d = rbox(p, c, h, 3.0);
+    col = mix(col, vec3(0.012), clamp(0.5 - d, 0.0, 1.0));
+    return mix(col, vec3(0.42), (1.0 - smoothstep(0.0, 1.6, abs(d + 0.5))) * 0.8);
+}
+vec3 panel(vec3 col, vec2 p, vec2 c, vec2 h) {
+    float d = rbox(p, c, h, 5.0);
+    col = mix(col, vec3(0.020, 0.021, 0.024), clamp(0.5 - d, 0.0, 1.0));
+    return mix(col, vec3(0.34), (1.0 - smoothstep(0.0, 1.8, abs(d + 0.5))) * 0.85);
+}
+vec3 strip(vec3 col, vec2 p, vec2 c, vec2 h) {
+    float d = rbox(p, c, h, 4.0);
+    col = mix(col, vec3(0.030), clamp(0.5 - d, 0.0, 1.0));
+    return mix(col, vec3(0.22), (1.0 - smoothstep(0.0, 1.5, abs(d + 0.5))) * 0.8);
+}
+// the unlit warning symbols: 0 fog lamp, 1 high beam, 2 brake, 3 parking brake, 4 battery
+vec3 lamp(vec3 col, vec2 p, vec2 c, float r, float k) {
+    vec2 q = p - c;
+    float a = 0.0;
+    vec3 lc = vec3(0.36);
+    if (k < 1.5) {
+        float dd = length(q - vec2(-r * 0.2, 0.0)) - r * 0.72;
+        a = clamp(0.5 - dd, 0.0, 1.0) * step(q.x, -r * 0.2 + r * 0.25);
+        for (int i = 0; i < 3; i++) {
+            float yy = (float(i) - 1.0) * r * 0.55;
+            a = max(a, clamp(r * 0.07 + 0.5 - length(vec2(max(abs(q.x - r * 0.62) - r * 0.32, 0.0), q.y - yy)), 0.0, 1.0));
+        }
+        if (k > 0.5) lc = vec3(0.26, 0.34, 0.62);
+    } else if (k < 2.5) {
+        float dd = abs(length(q) - r * 0.85);
+        a = clamp(r * 0.13 + 0.5 - dd, 0.0, 1.0);
+        a = max(a, clamp(r * 0.12 + 0.5 - max(abs(q.x), abs(q.y + r * 0.1) - r * 0.35), 0.0, 1.0) * step(abs(q.x), r * 0.12));
+        lc = vec3(0.50, 0.12, 0.10);
+    } else if (k < 3.5) {
+        float dd = abs(length(q) - r * 0.85);
+        a = clamp(r * 0.13 + 0.5 - dd, 0.0, 1.0);
+        float dp = abs(length(q) - r * 0.45);
+        a = max(a, clamp(r * 0.10 + 0.5 - dp, 0.0, 1.0));
+        lc = vec3(0.50, 0.12, 0.10);
+    } else {
+        float bx = clamp(r * 0.10 + 0.5 - abs(max(abs(q.x) - r * 0.85, abs(q.y) - r * 0.5)), 0.0, 1.0);
+        float tx = clamp(0.5 - max(abs(abs(q.x) - r * 0.45) - r * 0.12, abs(q.y + r * 0.7) - r * 0.2), 0.0, 1.0);
+        a = max(bx, tx);
+        lc = vec3(0.50, 0.12, 0.10);
+    }
+    return mix(col, lc, a * 0.85);
+}
+vec3 arcScale(vec3 col, vec2 p, vec2 c, float r, float a0, float a1, float n, float cold) {
+    vec2 q = p - c;
+    float d = length(q);
+    float a = atan(q.x, -q.y);
+    if (d < r - 9.0 || d > r + 3.0 || a < a0 - 0.03 || a > a1 + 0.03) return col;
+    float t = (a - a0) / (a1 - a0);
+    vec3 lc = vec3(0.90);
+    if (cold > 0.5) lc = mix(vec3(0.25, 0.55, 0.95), vec3(0.95, 0.15, 0.10), smoothstep(0.45, 0.85, t));
+    float band = clamp(0.5 - abs(d - (r - 2.0)) + 1.2, 0.0, 1.0);
+    col = mix(col, lc, band * 0.9);
+    float tk = floor(t * n + 0.5);
+    float ta = a0 + tk / n * (a1 - a0);
+    vec2 dir = vec2(sin(ta), -cos(ta));
+    float dd = length((q - dir * (r - 4.0)) - dir * clamp(dot(q - dir * (r - 4.0), dir), -6.0, 3.0)) - 0.9;
+    return mix(col, vec3(0.93), clamp(0.5 - dd, 0.0, 1.0) * step(d, r + 2.0) * step(r - 10.0, d));
+}
+vec3 gneedle(vec3 col, vec2 p, vec2 c, float r, float ang) {
+    vec2 q = p - c;
+    vec2 dir = vec2(sin(ang), -cos(ang));
+    float dd = segd(q, dir * (-r * 0.12), dir * (r * 0.95));
+    col = mix(col, vec3(0.95), clamp(1.15 - dd, 0.0, 1.0));
+    return mix(col, vec3(0.05), clamp(r * 0.11 - length(q), 0.0, 1.0));
+}
+
+void main() {
+    vec2 p = v_uv * u_size;
+    vec3 col = vec3(0.012);
+    col += vec3(0.010) * (1.0 - length(v_uv - 0.5));
+    // the two round dials
+    vec2 s = ${V2(S[0], S[1])};
+    vec2 t = ${V2(T[0], T[1])};
+    float R = ${F(R)};
+    vec2 ps = vec2(p.x - s.x, s.y - p.y);
+    vec2 pt = vec2(p.x - t.x, t.y - p.y);
+    col = face(col, ps, R);
+    col = face(col, pt, R);
+    col = ticks(col, ps, R, -2.618, 4.8, 22.0, 2.0, -1.0);
+    {   // the red zone: a solid block from 6500 to 7000 rpm on the rim
+        float ra = atan(pt.x, pt.y);
+        float rrel = mod(ra + 2.13 + 4.0 * PI, 2.0 * PI);
+        float rd = length(pt);
+        float rk = rrel / 3.67 * 14.0;
+        float rin = step(13.0, rk) * step(rk, 14.0) * clamp(rd - R * 0.795, 0.0, 1.0) * clamp(R * 0.905 - rd, 0.0, 1.0);
+        col = mix(col, vec3(0.78, 0.06, 0.05), rin);
+    }
+    col = ticks(col, pt, R, -2.13, 3.67, 14.0, 2.0, -1.0);
+    // the odometer windows in the speedometer
+    col = window(col, p, ${V2(S[0] - R * 0.04, S[1] - R * 0.27)}, vec2(${F(R * 0.36)}, ${F(R * 0.075)}));
+    col = window(col, p, ${V2(S[0] - R * 0.14, S[1] + R * 0.12)}, vec2(${F(R * 0.25)}, ${F(R * 0.07)}));
+    col = window(col, p, ${V2(S[0] + R * 0.13, S[1] + R * 0.12)}, vec2(${F(R * 0.085)}, ${F(R * 0.07)}));
+    // the consumption scale in the tachometer
+    col = arcScale(col, p, ${V2(T[0], T[1])}, ${F(R * 0.62)}, 1.85, 3.1, 10.0, 0.0);
+    // the little gauges between the dials
+    ${B.coolant ? 'col = panel(col, p, ' + box(B.coolant) + ');' : ''}
+    ${B.lamps ? 'col = panel(col, p, ' + box(B.lamps) + ');' : ''}
+    ${B.fuel ? 'col = panel(col, p, ' + box(B.fuel) + ');' : ''}
+    ${B.print ? 'col = panel(col, p, ' + box(B.print) + ');' : ''}
+${strips}${lamps}
+    ${B.coolant ? `vec2 cc = ${V2(B.coolant[0] + B.coolant[2] / 2, B.coolant[1] + B.coolant[3] * 0.92)};
+    col = arcScale(col, p, cc, ${F(B.coolant[3] * 0.74)}, -0.95, 0.95, 4.0, 1.0);
+    col = gneedle(col, p, cc, ${F(B.coolant[3] * 0.74)}, -0.95 + 1.9 * u_v.w);` : ''}
+    ${B.fuel ? `vec2 fc = ${V2(B.fuel[0] + B.fuel[2] / 2, B.fuel[1] + B.fuel[3] * 0.93)};
+    col = arcScale(col, p, fc, ${F(B.fuel[3] * 0.80)}, -0.95, 0.95, 6.0, 0.0);
+    col = gneedle(col, p, fc, ${F(B.fuel[3] * 0.80)}, -0.95 + 1.9 * u_v.z);` : ''}
+    ${B.lamps ? `// the indicator box: the coloured strip and two arrows (unlit)
+    vec2 lc0 = ${V2(B.lamps[0] + B.lamps[2] / 2, B.lamps[1] + B.lamps[3] * 0.30)};
+    for (int i = 0; i < 4; i++) {
+        float xo = (float(i) - 1.5) * ${F(B.lamps[2] * 0.21)};
+        float dq = rbox(p, lc0 + vec2(xo, 0.0), vec2(${F(B.lamps[2] * 0.085)}, ${F(B.lamps[3] * 0.11)}), 1.5);
+        vec3 bc = i == 0 ? vec3(0.32, 0.30, 0.04) : i == 1 ? vec3(0.04, 0.26, 0.09) : i == 2 ? vec3(0.04, 0.10, 0.34) : vec3(0.36, 0.05, 0.05);
+        col = mix(col, bc, clamp(0.5 - dq, 0.0, 1.0));
+    }
+    vec2 ac = ${V2(B.lamps[0] + B.lamps[2] / 2, B.lamps[1] + B.lamps[3] * 0.72)};
+    for (int j = 0; j < 2; j++) {
+        float sg = j == 0 ? -1.0 : 1.0;
+        vec2 q = vec2((p.x - ac.x) * sg, p.y - ac.y);
+        float hx = ${F(B.lamps[2] * 0.34)}, hy = ${F(B.lamps[3] * 0.22)};
+        float inHead = step(q.x, hx) * step(hx - hy * 1.3, q.x) * step(abs(q.y), (q.x - (hx - hy * 1.3)) * (-hy / (hy * 1.3)) + hy);
+        float inShaft = step(abs(q.y), hy * 0.38) * step(q.x, hx - hy * 1.2) * step(hx - hy * 3.2, q.x);
+        col = mix(col, vec3(0.05, 0.30, 0.10), max(inHead, inShaft) * 0.9);
+    }` : ''}
+    // the needles (speed 0..1 over the 275 degree dial, rpm 0..1 over 7000 on 210 degrees)
+    col = needle(col, ps, -2.618 + 4.8 * u_v.x, R);
+    col = needle(col, pt, -2.13 + 3.67 * u_v.y, R);
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+}
+
 // The Lambo theme's rev arc: wedge segments split by thin dark gaps, shaded from the inner to the outer edge. Up to the
 // rpm the blue to pale-blue run, then the grey segments, then the orange and red zones (always in colour, as on the
 // reel); a thin line with ticks and a red marker at the rpm. v_uv is 0..1 over the layer, (0,0) top-left.
@@ -1893,4 +2109,4 @@ void main() {
 }
 `;
 
-module.exports = { chromedash: CHROMEDASH, chromedial: CHROMEDIAL, shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO, lamboBuild: lamboBuild, lamboarc: LAMBOARC };
+module.exports = { chromedash: CHROMEDASH, chromedial: CHROMEDIAL, shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO, lamboBuild: lamboBuild, klassik: klassikBuild({}), klassikBuild: klassikBuild, lamboarc: LAMBOARC };

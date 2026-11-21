@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""gen_klassik.py - writes apps/yusuf_dash/hud/layouts/klassik.json (edit here, then regenerate):
+
+    python3 tools/gen_klassik.py
+
+The "Klassik" cluster: a 1980s BMW instrument cluster after a photo (speedometer 0-220 left, tachometer 0-7 right with the
+red zone from 6.5, between them the coolant gauge, the indicator box, the fuel gauge and the "NUR BLEIFREI TANKEN" plate,
+two lamp strips under it). The dials, ticks, needles, boxes and unlit lamps are one opaque effect layer (klassikdash, see
+shaders.js klassikBuild); the numbers are text widgets in Liberation Sans, the closest free face to the Helvetica print.
+Measures come from the photo at 2.73 px per photo px with the middle at x 900; BMW's black gear box (x 1406-1597, y 342-419)
+clips the tachometer's right rim only.
+"""
+import json, math, os
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(ROOT, 'apps', 'yusuf_dash', 'hud', 'layouts', 'klassik.json')
+W = []
+CELL = {'k_num': 32, 'k_numL': 36, 'k_txt': 30, 'k_small': 23, 'k_odo': 32, 'k_gear': 37}
+
+K = 2.73
+MX = 900
+
+
+def px(x):
+    return MX + (x - 280) * K
+
+
+def py(y):
+    return 395 + (y - 268) * K
+
+
+R = 265
+S = (545, 395)
+T = (1255, 395)
+
+
+def text(id, x, y, t, font, color='fg', align='center', w=100, z=5, **extra):
+    h = CELL[font]
+    left = x if align == 'left' else x - w / 2 if align == 'center' else x - w
+    d = dict(id=id, type='text', z=z, conn=0, x=round(left), y=round(y - h / 2), w=w, h=h, text=t, font=font, color=color, align=align)
+    d.update(extra)
+    W.append(d)
+
+
+def icon(id, name, cx, cy, s, color='dim', z=7):
+    W.append(dict(id=id, type='icon', conn=0, icon=name, z=z, x=round(cx - s / 2), y=round(cy - s / 2), w=s, h=s, color=color))
+
+
+def at(c, a, r):
+    return c[0] + r * math.sin(a), c[1] - r * math.cos(a)
+
+
+# the speedometer: 20 .. 220 every 20 km/h, -150 .. +125 degrees (1.25 degrees per km/h)
+for i, v in enumerate(range(20, 221, 20)):
+    x, y = at(S, math.radians(-150 + 1.25 * v), R * 0.655)
+    text('sp%d' % v, x, y, str(v), 'k_num', w=70, z=5)
+text('sp_u', S[0], S[1] + R * 0.47, 'km/h', 'k_txt', 'fg', w=100, z=5)
+text('sp_e', S[0] - R * 0.03, S[1] + R * 0.60, 'ELECTRONIC', 'k_small', 'dim', w=130, z=5)
+# the odometer windows: the range and the average speed stand in for the mileage (no odometer signal on the car)
+text('odo', S[0] - R * 0.04 + R * 0.34, S[1] - R * 0.27, '{{range}}', 'k_odo', 'fg', 'right', w=180, z=5)
+text('trip', S[0] - R * 0.14 + R * 0.23, S[1] + R * 0.12, '{{avgSpeed}}', 'k_odo', 'fg', 'right', w=125, z=5)
+
+# the tachometer: 0 .. 7, -122 .. +88 degrees (30 degrees per 1000 rpm)
+for k in range(8):
+    x, y = at(T, math.radians(-122 + 30 * k), R * 0.655)
+    text('tc%d' % k, x, y, str(k), 'k_numL', w=40, z=6)
+text('tc_u', T[0] + R * 0.20, T[1] - R * 0.33, 'U/min', 'k_txt', 'fg', w=100, z=6)
+text('tc_x', T[0] + R * 0.20, T[1] - R * 0.22, 'x1000', 'k_txt', 'fg', w=100, z=6)
+text('tc_l', T[0] + R * 0.02, T[1] + R * 0.68, 'l/100km', 'k_small', 'fg', w=110, z=6)
+for lab, a in (('10', 2.0), ('20', 3.0)):
+    x, y = T[0] + R * 0.50 * math.sin(a), T[1] - R * 0.50 * math.cos(a)
+    text('tl' + lab, x, y, lab, 'k_small', 'fg', w=40, z=6)
+
+# the little gauges between the dials
+B = {
+    'coolant': [px(236), py(191), 83 * K, 31 * K],
+    'lamps': [px(237), py(243), 82 * K, 30 * K],
+    'fuel': [px(237), py(282), 82 * K, 36 * K],
+    'print': [px(237), py(320), 82 * K, 15 * K],
+}
+fb = B['fuel']
+fc = (fb[0] + fb[2] / 2, fb[1] + fb[3] * 0.93)
+for lab, a in (('0', -0.95), ('20', -0.32), ('40', 0.32), ('60', 0.95)):
+    x, y = at(fc, a, fb[3] * 0.80 - 20)
+    text('fu' + lab, x, y, lab, 'k_small', 'fg', w=36, z=7)
+text('plate', B['print'][0] + B['print'][2] / 2 + 12, B['print'][1] + B['print'][3] / 2, 'NUR BLEIFREI TANKEN', 'k_small', 'fg', w=190, z=7)
+icon('i_fuel', 'fuel', fb[0] + 22, fb[1] + fb[3] * 0.62, 26, 'fg')
+icon('i_therm', 'therm', B['coolant'][0] + 22, B['coolant'][1] + B['coolant'][3] * 0.5, 24, 'fg')
+
+# the lamp strips under them (unlit symbols) and the gear in the middle one
+STRIPS = [[px(60), py(348), 135 * K, 14.5 * K], [px(200), py(348), 155 * K, 14.5 * K], [px(362), py(348), 138 * K, 14.5 * K]]
+LAMPS = [dict(x=px(90), y=py(355), r=15, k=0), dict(x=px(125), y=py(355), r=15, k=0), dict(x=px(160), y=py(355), r=15, k=1),
+         dict(x=px(372), y=py(355), r=14, k=2), dict(x=px(412), y=py(355), r=14, k=3), dict(x=px(490), y=py(355), r=14, k=4)]
+icon('i_oil', 'oilcan', px(447), py(355), 30, 'red', z=8)
+text('gear', px(277), py(355), '{{gear}}', 'k_gear', 'fg', w=70, z=8)
+
+geo = dict(s=list(S), t=list(T), R=R, boxes=B, strips=STRIPS, lamps=LAMPS)
+W.insert(0, dict(id='klassik', type='klassikdash', **{'class': 'content'}, z=1, x=0, y=0, w=1920, h=720, geo=geo))
+
+doc = {
+    'schemaVersion': 2,
+    'name': 'Klassik',
+    'theme': 'klassik',
+    'slots': [],
+    '_about': 'Klassik cluster, generated by tools/gen_klassik.py (edit that and regenerate): a 1980s BMW cluster.',
+    'widgets': W,
+}
+with open(OUT, 'w') as f:
+    json.dump(doc, f, indent=2)
+    f.write('\n')
+print('wrote', OUT, len(W), 'widgets')

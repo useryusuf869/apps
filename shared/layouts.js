@@ -38,6 +38,7 @@ const TYPES = {
     dial: ['measure'],
     chromedial: [],
     chromedash: [],
+    klassikdash: ['geo'],
     meter: ['signal', 'min', 'max'],
     gmeter: [],
     tiles: ['tiles'],
