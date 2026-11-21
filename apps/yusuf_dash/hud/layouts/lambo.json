@@ -902,7 +902,8 @@
       "text": "AWD",
       "font": "l_big",
       "color": "red",
-      "align": "left"
+      "align": "left",
+      "toggle": "drivetrain=AWD"
     },
     {
       "id": "oil_i",
@@ -1222,6 +1223,20 @@
       "font": "l_badge",
       "color": "fg",
       "align": "center"
+    },
+    {
+      "id": "dt_v2",
+      "type": "text",
+      "z": 5,
+      "x": 91,
+      "y": 376,
+      "w": 97,
+      "h": 33,
+      "text": "RWD",
+      "font": "l_big",
+      "color": "red",
+      "align": "left",
+      "toggle": "drivetrain=RWD"
     }
   ]
 }

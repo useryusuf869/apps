@@ -115,7 +115,7 @@ for name, (cx, tx), cy in [('FL', (220, 272), 262), ('FR', (369, 419), 262), ('R
 rule('sep1', 72, 466, 332)
 icon('dt_i', 'drivetrain', 62, 361, 30)
 text('dt_h', 91, 362, 'DRIVETRAIN', 'l_head', 'fg')
-text('dt_v', 91, 393, 'AWD', 'l_big', 'red')
+text('dt_v', 91, 393, 'AWD', 'l_big', 'red', toggle='drivetrain=AWD')
 rule('sep2', 29, 379, 429)
 
 
@@ -210,6 +210,11 @@ for _i, a in enumerate(_T):
             R['w'] -= ov
         if _hit(a, b):
             a['z'] = 9 if a['z'] < 9 else a['z'] + 1
+
+# the drivetrain readout: AWD or RWD by the "drivetrain" setting (only one of the two is ever shown, so no extra sheet)
+_dt = dict(next(w for w in W if w['id'] == 'dt_v'))
+_dt.update(id='dt_v2', text='RWD', toggle='drivetrain=RWD')
+W.append(_dt)
 
 for w in W:
     if w.get('type') == 'lambo':

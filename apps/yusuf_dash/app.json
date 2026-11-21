@@ -2,7 +2,7 @@
   "id": "yusuf_dash",
   "title": "Yusuf Dash",
   "description": "Yusufs eigene Dash-App: Tacho-Themes (u.a. Synthwave) und der Synthwave-Dash für den Mittelbildschirm in einer App",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "vendor": "custom",
   "loggingId": "YDA1",
   "iconGlyph": "YDA",
@@ -209,6 +209,22 @@
       "label": "Waze-Karte im Theme anzeigen",
       "type": "bool",
       "default": false
+    },
+    {
+      "key": "drivetrain",
+      "label": "Antrieb (Lambo-Anzeige)",
+      "type": "choice",
+      "default": "AWD",
+      "options": [
+        [
+          "AWD",
+          "Allrad (xDrive)"
+        ],
+        [
+          "RWD",
+          "Heckantrieb"
+        ]
+      ]
     },
     {
       "key": "units",
