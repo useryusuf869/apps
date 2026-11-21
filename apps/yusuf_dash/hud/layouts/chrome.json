@@ -401,7 +401,7 @@
       "y": 540,
       "w": 200,
       "h": 36,
-      "text": "OIL {{oil}}{{u:temp}}",
+      "text": "POWER  OIL {{oil}}{{u:temp}}",
       "font": "c_txt",
       "color": "fg",
       "align": "center"
