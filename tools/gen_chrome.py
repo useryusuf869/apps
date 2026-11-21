@@ -4,7 +4,7 @@
     python3 tools/gen_chrome.py
 
 The "Chrom" cluster: three round analogue dials with brushed chrome bezels on a near-black face, after a luxury saloon's
-instrument cluster. Left: a 0-100 power gauge (rises left to right as you use power) with the oil temperature
+instrument cluster. Left: a 0-100 power-reserve gauge (full at idle, falls as you use power) with the oil temperature
 under it. Centre: the speedometer, 0-260 km/h (the labels follow the units, see CHROME_SPEED) with the range and the
 average speed under it. Right: fuel (E-F, left half) and coolant (C-H, right half), the clock and the gear in a green
 box. The hub is a plain chrome cap, no marque. BMW's black gear box (x 1406-1597, y 342-419) clips the right dial's edge.
@@ -57,13 +57,13 @@ text('sp_u', SX, SY - SR * 0.60, '{{u:speed}}', 'c_small', 'fg', w=100)
 text('sp_r', SX, SY + SR * 0.55, '{{range}} {{u:dist}}', 'c_txt', 'fg', w=260)
 text('sp_a', SX, SY + SR * 0.64, 'AVG {{avgSpeed}} {{u:speed}}', 'c_txt', 'fg', w=260)
 
-# left: 0-100 power (needle at 0 when idle, rises with load)
+# left: 0-100 power reserve (a needle at 100 when idle)
 LX, LY, LR = 325, 390, 280
 dial('reserve', LX, LY, LR, kind='reserve', start=-110, sweep=200, ticks=5, minor=4, ringW=16, hub=50, disc=0.46, cut=0.75)
 for i in range(6):
     x, y = at(LX, LY, -110 + i * 40, LR * 0.62)
     text('rs%d' % i, x, y, str(i * 20), 'c_num', w=70)
-text('rs_o', LX, LY + LR * 0.60, 'POWER  OIL {{oil}}{{u:temp}}', 'c_txt', 'fg', w=200)
+text('rs_o', LX, LY + LR * 0.60, 'OIL {{oil}}{{u:temp}}', 'c_txt', 'fg', w=200)
 
 # right: fuel (E-F, left half) and coolant (H-C, right half), gear on top, clock and coolant under the hub
 RX, RY, RR = 1603, 390, 280

@@ -2240,7 +2240,7 @@ class HudApp {
                     a = isNum(sp) ? q((us ? sp * 0.621371 : sp) / D.max) : 0;
                 } else if (g.kind === 'reserve') {
                     const pw = this._raw('powerPct');
-                    a = isNum(pw) ? q(Math.max(0, pw) / 100) : 0;
+                    a = isNum(pw) ? q(1 - pw / 100) : 1;
                 } else {
                     const f = this._raw('fuel'), cl = this._raw('coolant');
                     a = isNum(f) ? q(f) : 0;
@@ -2261,7 +2261,7 @@ class HudApp {
                 a = isNum(sp) ? q((us ? sp * 0.621371 : sp) / D.max) : 0;
             } else if (k === 'reserve') {
                 const pw = this._raw('powerPct');
-                a = isNum(pw) ? q(Math.max(0, pw) / 100) : 0;
+                a = isNum(pw) ? q(1 - pw / 100) : 1;
             } else {       // twin: A = fuel (0..1), B = coolant 40..130
                 const f = this._raw('fuel'), cl = this._raw('coolant');
                 a = isNum(f) ? q(f) : 0;
