@@ -96,7 +96,7 @@ CLUSTER_FONTS = [
     ('w_speed', 'Orbitron[wght].ttf', 150, DIGITS + '-', 4, 'Black', {'0': 'O'}),
     ('w_gear', 'Orbitron[wght].ttf', 118, 'PRNDSM-' + DIGITS, 3, 'Black', {'0': 'O'}),
     ('w_val', 'Orbitron[wght].ttf', 44, DIGITS + ':+-.\u00b0', 0, 'Bold', {'0': 'O'}, '\u00b0'),
-    ('w_label', 'Orbitron[wght].ttf', 22, UPPER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}),
+    ('w_label', 'Orbitron[wght].ttf', 22, UPPER + DIGITS + ' -/.:%\u00b0\u00c4\u00d6\u00dc', 0, 'Bold', {'0': 'O'}),
     # Lambo: wide oblique Orbitron after konsti_m440i's reel; the gear and the rev numbers are outlines (hollow)
     ('l_gear', 'Orbitron[wght].ttf', 190, '12345678NRP', 0, 'Black', {'0': 'O'}, '', 9, 0.2, 0.8),
     ('l_speed', 'Orbitron[wght].ttf', 104, DIGITS + '-', 3, 'Black', {'0': 'O'}, '', 0, 0.2, 0.8),
@@ -104,8 +104,8 @@ CLUSTER_FONTS = [
     ('l_val', 'Orbitron[wght].ttf', 44, DIGITS + ':+-.\u00b0', 0, 'Bold', {'0': 'O'}, '\u00b0', 0, 0.2, 0.82),
     ('l_tyre', 'Orbitron[wght].ttf', 42, DIGITS + '.', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.9),
     ('l_unit', 'Orbitron[wght].ttf', 17, UPPER + LOWER + DIGITS + ' -/.:%\u00b0\u00d8', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.8),
-    ('l_label', 'Orbitron[wght].ttf', 20, UPPER + LOWER + DIGITS + ' -/.:%\u00b0\u00d8', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.8),
-    ('l_head', 'Orbitron[wght].ttf', 26, UPPER + DIGITS + ' -/.:%\u00b0', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.8),
+    ('l_label', 'Orbitron[wght].ttf', 20, UPPER + LOWER + DIGITS + ' -/.:%\u00b0\u00d8\u00c4\u00d6\u00dc', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.8),
+    ('l_head', 'Orbitron[wght].ttf', 26, UPPER + DIGITS + ' -/.:%\u00b0\u00c4\u00d6\u00dc', 0, 'Bold', {'0': 'O'}, '', 0, 0.2, 0.8),
     ('l_trip', 'Orbitron[wght].ttf', 50, DIGITS + ':.-', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.8),
     ('l_badge', 'Orbitron[wght].ttf', 46, UPPER + 'idesxrv' + DIGITS + ' -', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.85),
     ('l_big', 'Orbitron[wght].ttf', 40, UPPER + DIGITS + ' -/.:%', 0, 'Black', {'0': 'O'}, '', 0, 0.2, 0.8),
@@ -113,7 +113,7 @@ CLUSTER_FONTS = [
     # Chrome: classic upright sans for the dial numbers and the small readouts
     ('c_num', 'BarlowSemiCondensed-SemiBold.ttf', 44, DIGITS, 0),
     ('c_numL', 'BarlowSemiCondensed-SemiBold.ttf', 58, DIGITS, 0),
-    ('c_txt', 'Barlow-Medium.ttf', 30, UPPER + LOWER + DIGITS + ' -/.:%\u00b0>'),
+    ('c_txt', 'Barlow-Medium.ttf', 30, UPPER + LOWER + DIGITS + ' -/.:%\u00b0>\u00d8\u00c4\u00d6\u00dc'),
     ('c_small', 'Barlow-Medium.ttf', 22, UPPER + LOWER + DIGITS + ' -/.:%\u00b0'),
     ('c_gear', 'BarlowSemiCondensed-SemiBold.ttf', 52, 'PRND' + DIGITS),
 ]

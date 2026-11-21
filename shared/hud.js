@@ -230,6 +230,10 @@ const { HudClaim } = require('./kit/hud_claim');
 const CLAIM_ID = 'idrive_hud_widgets';
 const CLAIM_MS = 1000;
 
+// German slot headings (Yusuf Dash's fonts have the umlauts; HUD Widgets' do not, so sensors.js keeps the English ones)
+const DE_HEAD = { rpm: 'U/MIN', boost: 'LADEDRUCK', torque: 'MOMENT', power: 'LEISTUNG', torquePct: 'MOMENT', powerPct: 'LEISTUNG', oil: 'ÖL',
+    coolant: 'KÜHL', intake: 'LUFT', ambient: 'AUSSEN', speed: 'TEMPO', gLat: 'QUER-G', gLong: 'LÄNGS-G', fuel: 'TANK', range: 'REICHW.',
+    hvSoc: 'AKKU', shiftAt: 'SCHALTEN', lastShift: 'LETZTER' };
 const BOOST_SCALE = { factor: 0.01, offset: 0, invalid: 255 }; // see header comment
 // the widget types drawn as pixels (image layers, packed into sheets unless "own": true); the rest are shaders
 const IMAGE_TYPES = { text: true, scale: true, stripe: true, badge: true, gridlabels: true, icon: true, swatchimg: true };
@@ -1296,6 +1300,7 @@ class HudApp {
             const kind = tok.slice(0, tok.indexOf(':')), sn = this.slotSensor(this.activeName, tok.slice(kind.length + 1), this.layoutSlots);
             if (kind === 'slot') return this.sensorValue(sn);
             if (kind === 'slotHead') return sn ? sn.head : '';
+            if (kind === 'slotHeadDe') return sn ? (DE_HEAD[sn.id] || sn.head) : '';
             // the heading with the unit, for a slot with no unit of its own: "FUEL %" (a temperature's ° is on its value)
             if (kind === 'slotHeadU') { const u = sn && !sn.suffix ? this.sensorUnit(sn) : ''; return sn ? sn.head + (u ? ' ' + u : '') : ''; }
             if (kind === 'slotUnit') return this.sensorUnit(sn);

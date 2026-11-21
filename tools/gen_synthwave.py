@@ -12,7 +12,7 @@ right, the clock on the grid, and four readouts (changeable on the Readouts tab)
 import json, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'apps', 'hud', 'layouts', 'synthwave.json')
+OUT = os.path.join(ROOT, 'apps', 'yusuf_dash', 'hud', 'layouts', 'synthwave.json')
 
 W = []
 
@@ -32,7 +32,7 @@ add(id='bg', type='synth', **{'class': 'content'}, z=0, x=0, y=0, w=1920, h=720,
 # rev bar across the sky, the rpm under it
 add(id='revs', type='shiftbar', **{'class': 'content'}, z=2, x=400, y=112, w=1120, h=30, segments=40)
 text('rpm', 700, 156, 300, 36, '{{rpm}}', 'w_val', 'cyan', 'right', glow=True)
-text('rpm_label', 1014, 169, 120, 22, 'RPM', 'w_label', 'violet', 'left')
+text('rpm_label', 1014, 169, 120, 22, 'U/MIN', 'w_label', 'violet', 'left')
 
 # speed, left
 text('speed', 90, 296, 430, 120, '{{speed}}', 'w_speed', 'fg', 'right', glow=True)
@@ -47,9 +47,9 @@ text('clock', 760, 574, 400, 36, '{{time}}', 'w_val', 'fg', 'center', glow=True)
 
 # four readouts on the grid, two each side (left of the belt light's x 587-626 stays clear above y 663)
 SLOTS = [('1', 'left, bottom', 'oil', 140), ('2', 'left, bottom', 'coolant', 380),
-         ('3', 'right, bottom', 'boost', 1290), ('4', 'right, bottom', 'range', 1530)]
+         ('3', 'right, bottom', 'boost', 1250), ('4', 'right, bottom', 'range', 1560)]
 for sid, where, default, x in SLOTS:
-    text('slot%s_head' % sid, x, 596, 230, 22, '{{slotHead:%s}} {{slotUnit:%s}}' % (sid, sid), 'w_label', 'violet', 'left', spacing=1)
+    text('slot%s_head' % sid, x, 596, 230, 22, '{{slotHeadDe:%s}} {{slotUnit:%s}}' % (sid, sid), 'w_label', 'violet', 'left', spacing=1)
     text('slot%s' % sid, x, 624, 230, 36, '{{slot:%s}}' % sid, 'w_val', 'cyan', 'left', slot=sid, fit=['w_label'])
 
 doc = {

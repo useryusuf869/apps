@@ -55,7 +55,7 @@ for i in range(14):
     text('sp%d' % i, x, y, '{{cdial:%d}}' % i, 'c_num', w=80)
 text('sp_u', SX, SY - SR * 0.60, '{{u:speed}}', 'c_small', 'fg', w=100)
 text('sp_r', SX, SY + SR * 0.55, '{{range}} {{u:dist}}', 'c_txt', 'fg', w=260)
-text('sp_a', SX, SY + SR * 0.64, 'AVG {{avgSpeed}} {{u:speed}}', 'c_txt', 'fg', w=260)
+text('sp_a', SX, SY + SR * 0.64, 'Ø {{avgSpeed}} {{u:speed}}', 'c_txt', 'fg', w=260)
 
 # left: 0-100 power reserve (a needle at 100 when idle)
 LX, LY, LR = 325, 390, 280
@@ -63,7 +63,7 @@ dial('reserve', LX, LY, LR, kind='reserve', start=-110, sweep=200, ticks=5, mino
 for i in range(6):
     x, y = at(LX, LY, -110 + i * 40, LR * 0.62)
     text('rs%d' % i, x, y, str(i * 20), 'c_num', w=70)
-text('rs_o', LX, LY + LR * 0.60, 'OIL {{oil}}{{u:temp}}', 'c_txt', 'fg', w=200)
+text('rs_o', LX, LY + LR * 0.60, 'ÖL {{oil}}{{u:temp}}', 'c_txt', 'fg', w=200)
 
 # right: fuel (E-F, left half) and coolant (H-C, right half), gear on top, clock and coolant under the hub
 RX, RY, RR = 1603, 390, 280
