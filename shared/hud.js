@@ -1632,6 +1632,12 @@ class HudApp {
         return not ? !on : on;
     }
 
+    /** The Lambo shader with its geometry written in (the car's GPU cannot take the long uniform arrays). */
+    _lamboSource(w) {
+        const t = this.theme, R = Array.isArray(w.rules) ? w.rules : [];
+        return shaders.lamboBuild(w, { rules: R.map((q) => rgb(color(t, q.color || 'fg'))) });
+    }
+
     /** A widget: on its own layer (sheet null: an effect, or an image widget with "own": true), or a member of a sheet. */
     _create(w, sheet) {
         let ref, c;
@@ -1640,7 +1646,7 @@ class HudApp {
             c = this._clientAt(this._connOf(w));
             const base = { target: this.target, klass: w.class || 'content', z: w.z || 0, x: w.x, y: w.y, w: w.w, h: w.h };
             if (IMAGE_TYPES[w.type]) ref = c.image(Object.assign({ iw: w.w, ih: w.h }, base));
-            else ref = c.effect(Object.assign({ fs: w.type === 'swatch' ? calibration.SWATCH : shaders[w.type] }, base));
+            else ref = c.effect(Object.assign({ fs: w.type === 'swatch' ? calibration.SWATCH : w.type === 'lambo' ? this._lamboSource(w) : shaders[w.type] }, base));
             if (!ref) { this.log.warn('widget "' + w.id + '": layer refused'); return; }
             this.placed.push({ c, ref, x: w.x, y: w.y, w: w.w, h: w.h });
         }
@@ -1892,45 +1898,8 @@ class HudApp {
             c.uniform(ref, 'u_hole', this._hole(w));
             c.uniform(ref, 'u_holeR', [this._holeRadius(w)]);
         } else if (w.type === 'lambo') {
-            // panels: polygons (corner lists in target px); their edges, 16 + 16 + 8 + 8 of them, in layer px
-            const CAP = [16, 16, 8, 8], P = Array.isArray(w.panels) ? w.panels : [], cnt = [], edges = [];
-            CAP.forEach((cap, k) => {
-                const pts = ((P[k] && P[k].points) || []).filter((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1])).slice(0, cap);
-                cnt.push(pts.length >= 3 ? pts.length : 0);
-                for (let i = 0; i < cap; i++) {
-                    const a = pts[i], b = pts[(i + 1) % pts.length];
-                    edges.push(...(pts.length >= 3 && a && b ? [a[0] - w.x, a[1] - w.y, b[0] - w.x, b[1] - w.y] : [0, 0, 0, 0]));
-                }
-            });
-            // rails: polylines of target px, as one list of segments
-            const rs = [];
-            (Array.isArray(w.rails) ? w.rails : []).forEach((pl) => {
-                for (let i = 0; Array.isArray(pl) && i + 1 < pl.length && rs.length < 160; i++) rs.push(pl[i][0] - w.x, pl[i][1] - w.y, pl[i + 1][0] - w.x, pl[i + 1][1] - w.y);
-            });
-            const nr = rs.length / 4;
-            while (rs.length < 160) rs.push(0, 0, 0, 0);
-            const bd = Array.isArray(w.band) ? w.band : [0, 0, 1, 1], dm = Array.isArray(w.dome) ? w.dome : [0, 0, 0, 0];
+            // the static geometry is in the shader source (see shaders.lamboBuild); only the live values are uniforms
             c.uniform(ref, 'u_size', [w.w, w.h]);
-            // bounding boxes (layer px, grown by the glow's reach) so most pixels skip the edge loops: the panels, two for the rails
-            const grow = 40, pb = [];
-            CAP.forEach((cap, k) => {
-                const o = CAP.slice(0, k).reduce((a, b) => a + b, 0), xs = [], ys = [];
-                for (let i = 0; i < cnt[k]; i++) { xs.push(edges[(o + i) * 4]); ys.push(edges[(o + i) * 4 + 1]); }
-                pb.push(...(xs.length ? [Math.min(...xs) - grow, Math.min(...ys) - grow, Math.max(...xs) + grow, Math.max(...ys) + grow] : [1, 1, 0, 0]));
-            });
-            const rb = [[1e9, 1e9, -1e9, -1e9], [1e9, 1e9, -1e9, -1e9]];
-            (Array.isArray(w.rails) ? w.rails : []).forEach((pl, k) => {
-                const b = rb[Math.min(k, 1)];
-                (pl || []).forEach((q) => { b[0] = Math.min(b[0], q[0] - w.x - grow); b[1] = Math.min(b[1], q[1] - w.y - grow); b[2] = Math.max(b[2], q[0] - w.x + grow); b[3] = Math.max(b[3], q[1] - w.y + grow); });
-            });
-            c.uniform(ref, 'u_pb', pb, { type: 'vec4' });
-            c.uniform(ref, 'u_rb', rb[0].concat(rb[1]), { type: 'vec4' });
-            c.uniform(ref, 'u_n', cnt);
-            c.uniform(ref, 'u_e', edges, { type: 'vec4' });
-            c.uniform(ref, 'u_rn', [nr]);
-            c.uniform(ref, 'u_rs', rs, { type: 'vec4' });
-            c.uniform(ref, 'u_band', [bd[0] - w.x, bd[1] - w.y, bd[2], bd[3]]);
-            c.uniform(ref, 'u_dome', [dm[0] - w.x, dm[1] - w.y, dm[2], dm[3]]);
             const lg = Array.isArray(w.logo) && this._isMBadge() ? w.logo : [0, 0, 0, 0];
             c.uniform(ref, 'u_logo', [lg[0] - w.x, lg[1] - w.y, lg[2], lg[3]]);
             c.uniform(ref, 'u_bg', rgb(color(t, 'bg')));
@@ -1940,22 +1909,7 @@ class HudApp {
             c.uniform(ref, 'u_glow', rgb(color(t, 'glow3')));
             c.uniform(ref, 'u_blue', rgb(color(t, 'blue')));
             c.uniform(ref, 'u_trk', rgb(color(t, 'trk')));
-            const B = Array.isArray(w.bars) ? w.bars.slice(0, 6) : [], bx = [], bs = [];
-            for (let i = 0; i < 6; i++) {
-                const b = B[i];
-                bx.push(...(b ? [b.x - w.x, b.y - w.y, b.w, b.h] : [0, 0, 0, 0]));
-                bs.push(...(b ? [b.segments || 40, 0, isNum(b.gap) ? b.gap : 1.5, 0] : [0, 0, 0, 0]));
-            }
-            const Q = Array.isArray(w.rules) ? w.rules.slice(0, 8) : [], rx = [], rc = [];
-            for (let i = 0; i < 8; i++) {
-                const q = Q[i], cc = q ? rgb(color(t, q.color || 'fg')) : [0, 0, 0];
-                rx.push(...(q ? [q.x - w.x, q.y - w.y, q.w, q.h] : [0, 0, 0, 0]));
-                rc.push(cc[0], cc[1], cc[2], 1);
-            }
-            c.uniform(ref, 'u_rules', rx, { type: 'vec4' });
-            c.uniform(ref, 'u_rcol', rc, { type: 'vec4' });
-            c.uniform(ref, 'u_bars', bx, { type: 'vec4' });
-            c.uniform(ref, 'u_bs', bs, { type: 'vec4' });
+            c.uniform(ref, 'u_bv', [0, 0, 0, 0, 0, 0, 0, 0], { type: 'vec4' });
         } else if (w.type === 'lamboarc') {
             const max = this._barMax();
             c.uniform(ref, 'u_size', [w.w, w.h]);
@@ -2164,9 +2118,9 @@ class HudApp {
             x.lamboKey = key;
             const lg = Array.isArray(w.logo) && on ? w.logo : [0, 0, 0, 0];
             x.c.uniform(x.ref, 'u_logo', [lg[0] - w.x, lg[1] - w.y, lg[2], lg[3]]);
-            const bs = [];
-            for (let i = 0; i < 6; i++) { const b = B[i]; bs.push(...(b ? [b.segments || 40, vals[i], isNum(b.gap) ? b.gap : 1.5, 0] : [0, 0, 0, 0])); }
-            x.c.uniform(x.ref, 'u_bs', bs, { type: 'vec4' });
+            const bv = [];
+            for (let i = 0; i < 8; i++) bv.push(isNum(vals[i]) ? vals[i] : 0);
+            x.c.uniform(x.ref, 'u_bv', bv, { type: 'vec4' });
         } else if (w.type === 'synth') {
             // the grid runs towards the car: a phase of 0..1 per cell, moved by the speed (km/h) and sent about 8 times a
             // second, only when it has moved. A rebuild (force) sends it as it is.

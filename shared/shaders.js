@@ -1137,7 +1137,11 @@ const CHROMEDASH = `// The Chrome theme in ONE cluster-render "effect" layer (th
 //   u_sA    startA, sweepA, startB, sweepB (radians clockwise from 12 o'clock; sweepB 0: none)
 //   u_nn    majors of A, of B, red from (fraction of A; above 1: none), speed-limit sign radius (fraction of R; 0: none)
 //   u_sg    sign x, y (fractions of R from the centre)      u_val  needle values 0..1 of A, B (< 0: no needle)
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 varying vec2 v_uv;
 uniform vec2 u_size;
 uniform vec4 u_dial[3];
@@ -1206,25 +1210,25 @@ void main() {
             vec3 col = u_face;
             if (d > rin) {
                 float t = (d - rin) / D.w;
-                float prof = 0.55 + 0.45 * exp(-pow((t - 0.42) * 3.0, 2.0));
+                float prof = 0.55 + 0.45 * exp(-(t - 0.42) * (t - 0.42) * 9.0);
                 float refl = 0.78 + 0.22 * cos(a + 0.75)
                            + 0.55 * pow(max(cos(a + 0.75), 0.0), 14.0)
                            + 0.45 * pow(max(cos(a - 2.35), 0.0), 10.0)
                            - 0.45 * pow(max(cos(a - 0.6), 0.0), 6.0) - 0.4 * pow(max(cos(a + 2.2), 0.0), 8.0);
                 vec3 ring = mix(u_chrome2, vec3(1.0), clamp(prof * refl, 0.0, 1.0));
                 ring = mix(ring, vec3(1.0), smoothstep(0.80, 0.9, t) * (1.0 - smoothstep(0.9, 1.0, t)) * 0.7);
-                ring *= 0.35 + 0.65 * smoothstep(0.0, 0.1, t) * (0.55 + 0.45 * smoothstep(1.0, 0.92, t));
+                ring *= 0.35 + 0.65 * smoothstep(0.0, 0.1, t) * (0.55 + 0.45 * (1.0 - smoothstep(0.92, 1.0, t)));
                 float lip = clamp(1.0 - t * D.w / 2.0, 0.0, 1.0);
                 ring = mix(ring, vec3(1.0), lip * 0.55);
                 col = ring;
             } else {
-                col *= 0.55 + 0.7 * smoothstep(rin, 0.0, d);
-                col *= 0.6 + 0.4 * smoothstep(rin, rin * 0.82, d);
+                col *= 0.55 + 0.7 * (1.0 - smoothstep(0.0, rin, d));
+                col *= 0.6 + 0.4 * (1.0 - smoothstep(rin * 0.82, rin, d));
                 float dr = C.y * R;
                 if (d < dr) {
                     float n = 0.5 + 0.5 * sin(p.x * 1.7) * sin(p.y * 1.7);
                     vec3 dc = vec3(0.075, 0.08, 0.09) + vec3(0.03) * n;
-                    dc *= 0.7 + 0.5 * smoothstep(dr, 0.0, d);
+                    dc *= 0.7 + 0.5 * (1.0 - smoothstep(0.0, dr, d));
                     col = mix(dc, col, smoothstep(dr - 2.0, dr, d) * 0.9);
                 }
                 float tr = rin * 0.965;
@@ -1546,28 +1550,68 @@ void main() {
 }
 `;
 
-// The panels of the Lambo backdrop: up to 4 polygons, one with up to 16 corners each (16, 16, 8, 8), as edges in u_e.
-const LAMBO_PANELS = [16, 16, 8, 8];
-function lamboSource() {
-    let off = 0, fn = '';
-    LAMBO_PANELS.forEach((n, k) => {
-        fn += 'float poly' + k + '(vec2 p) {\n    if (p.x < u_pb[' + k + '].x || p.y < u_pb[' + k + '].y || p.x > u_pb[' + k + '].z || p.y > u_pb[' + k + '].w) return 1.0e3;\n    float d = 1.0e4; float s = 1.0;\n';
-        for (let i = 0; i < n; i++) {
-            const e = 'u_e[' + (off + i) + ']';
-            fn += '    if (' + i + '.0 < u_n[' + k + ']) { vec2 a = ' + e + '.xy, b = ' + e + '.zw; d = min(d, segd(p, a, b));' +
-                ' if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) s = -s; }\n';
-        }
+// The Lambo backdrop. The car's GPU refuses shaders with many uniform vectors (the first versions had 135 of them and
+// the cluster reset its Ethernet link, E10603; GT3's 33 and Chrom's 26 run), so the static geometry (panel polygons, rails,
+// bars, rules, band, dome) is written into the source as literals when the layer is made, and only the live values stay
+// uniforms: u_size, u_logo, u_bv (the six bar values), and the theme's colours.
+function lamboBuild(w, cols) {
+    const F = (v) => (Math.round(v * 100) / 100).toFixed(2);
+    const V2 = (a, b) => 'vec2(' + F(a) + ',' + F(b) + ')';
+    const ox = w.x || 0, oy = w.y || 0;
+    const P = Array.isArray(w.panels) ? w.panels : [];
+    const grow = 40;
+    let fn = '', calls = '';
+    [16, 16, 8, 8].forEach((cap, k) => {
+        const pts = ((P[k] && P[k].points) || []).filter((q) => Array.isArray(q)).slice(0, cap).map((q) => [q[0] - ox, q[1] - oy]);
+        if (pts.length < 3) return;
+        const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
+        fn += 'float poly' + k + '(vec2 p) {\n    if (p.x < ' + F(Math.min(...xs) - grow) + ' || p.y < ' + F(Math.min(...ys) - grow) + ' || p.x > ' + F(Math.max(...xs) + grow) + ' || p.y > ' + F(Math.max(...ys) + grow) + ') return 1.0e3;\n    float d = 1.0e4; float s = 1.0; vec2 a; vec2 b;\n';
+        pts.forEach((a, i) => {
+            const b = pts[(i + 1) % pts.length];
+            fn += '    a = ' + V2(a[0], a[1]) + '; b = ' + V2(b[0], b[1]) + '; d = min(d, segd(p, a, b));' +
+                (a[1] > b[1] !== b[1] > a[1] && a[1] !== b[1] ? ' if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) s = -s;' : '') + '\n';
+        });
         fn += '    return d * s;\n}\n';
-        off += n;
+        calls += '    { float d = poly' + k + '(p);\n' +
+            '      float shade = 0.9 + 0.1 * sin(p.y * 0.04);\n' +
+            '      col += u_glow * 0.45 * exp(-max(d, 0.0) * 0.20) * step(0.0, d) * step(d, 30.0);\n' +
+            '      col = mix(col, u_panel * shade, 0.95 * (1.0 - smoothstep(-0.6, 0.8, d)));\n' +
+            '      float edge = 1.0 - smoothstep(1.4, 3.2, abs(d + 1.8));\n' +
+            '      col = mix(col, u_line, edge * step(d, 4.0)); }\n';
     });
+    // rails: two polylines, each in its own bounding box
+    let rails = '    float rd = 1.0e4;\n';
+    (Array.isArray(w.rails) ? w.rails : []).slice(0, 2).forEach((pl) => {
+        if (!Array.isArray(pl) || pl.length < 2) return;
+        const xs = pl.map((q) => q[0] - ox), ys = pl.map((q) => q[1] - oy);
+        rails += '    if (p.x >= ' + F(Math.min(...xs) - grow) + ' && p.y >= ' + F(Math.min(...ys) - grow) + ' && p.x <= ' + F(Math.max(...xs) + grow) + ' && p.y <= ' + F(Math.max(...ys) + grow) + ') {\n';
+        for (let i = 0; i + 1 < pl.length; i++) rails += '        rd = min(rd, segd(p, ' + V2(pl[i][0] - ox, pl[i][1] - oy) + ', ' + V2(pl[i + 1][0] - ox, pl[i + 1][1] - oy) + '));\n';
+        rails += '    }\n';
+    });
+    let rules = '';
+    (Array.isArray(w.rules) ? w.rules : []).slice(0, 8).forEach((q, i) => {
+        const c = (cols && cols.rules && cols.rules[i]) || [1, 1, 1];
+        rules += '    if (p.x >= ' + F(q.x - ox) + ' && p.x < ' + F(q.x - ox + q.w) + ' && p.y >= ' + F(q.y - oy) + ' && p.y < ' + F(q.y - oy + q.h) + ') col = vec3(' + F(c[0]) + ',' + F(c[1]) + ',' + F(c[2]) + ');\n';
+    });
+    let bars = '';
+    (Array.isArray(w.bars) ? w.bars : []).slice(0, 6).forEach((b, i) => {
+        const segs = b.segments || 40, gap = isFinite(b.gap) ? b.gap : 1.5, bx = b.x - ox, by = b.y - oy;
+        bars += '    if (p.x >= ' + F(bx) + ' && p.x < ' + F(bx + b.w) + ' && p.y >= ' + F(by) + ' && p.y < ' + F(by + b.h) + ') {\n' +
+            '        float slot = ' + F((b.w + gap) / segs) + ';\n' +
+            '        float x = p.x - ' + F(bx) + ';\n' +
+            '        float k = floor(x / slot);\n' +
+            '        float fx = x - k * slot;\n' +
+            '        float ba = clamp(fx + 0.5, 0.0, 1.0) * clamp(slot - ' + F(gap) + ' - fx + 0.5, 0.0, 1.0);\n' +
+            '        if (k < ' + F(segs) + ' && ba > 0.0) {\n' +
+            '            float v = u_bv[' + (i >> 2) + ']' + '.' + 'xyzw'[i & 3] + ';\n' +
+            '            float lit = (v > 0.0 && (k + 0.5) / ' + F(segs) + ' <= v + 0.5 / ' + F(segs) + ') ? 1.0 : 0.0;\n' +
+            '            col = mix(col, mix(u_trk, u_blue, lit), ba);\n' +
+            '        }\n    }\n';
+    });
+    const bd = Array.isArray(w.band) ? w.band : [0, 0, 1, 1], dm = Array.isArray(w.dome) ? w.dome : [0, 0, 0, 0];
     return `// The Lambo theme's backdrop in one cluster-render "effect" layer (GLSL ES 1.00): a dark carbon honeycomb, two glowing
-// rails along the hood line, four glass panels (polygons, so one edge can follow the rev arc), a grey band behind the
-// gear row and a small blue dome. v_uv is 0..1 across the layer, (0,0) at the top-left. Uniforms from hud.js:
-//   u_size  layer size (w, h)    u_n  corners of each of the 4 panels    u_e  their edges (x1, y1, x2, y2), 16 + 16 + 8 + 8
-//   u_rn  segments in the rails   u_rs  their segments (the left and right rail, one list)
-//   u_logo  x, y, w, h of the three slanted M stripes (w 0: none)
-//   u_band  x, y, w, h of the grey band    u_dome  centre x, y and radii x, y of the blue dome (upper half)
-//   u_bg  base   u_hex  honeycomb lines   u_panel  glass   u_line  panel edge and rails   u_glow  glow round them   u_blue  the dome
+// rails along the hood line, glass panels (polygons, so one edge can follow the rev arc), a grey band behind the
+// gear row, a small blue dome, flat rules and the readout bars. Static geometry is literal (see lamboBuild).
 // Output is opaque (alpha 1): the layer replaces BMW's gauges under it, like the fill widget.
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -1576,26 +1620,15 @@ precision mediump float;
 #endif
 varying vec2 v_uv;
 uniform vec2 u_size;
-uniform vec4 u_n;
-uniform vec4 u_e[48];
-uniform vec4 u_pb[4];     // bounding box of each panel (layer px, grown by the glow): outside it the edge loop is skipped
-uniform vec4 u_rb[2];     // bounding boxes of the two rails
-uniform float u_rn;
-uniform vec4 u_rs[40];
-uniform vec4 u_band;
-uniform vec4 u_dome;
-uniform vec4 u_bars[6];   // segmented bars: x, y, w, h (layer px)
-uniform vec4 u_bs[6];     // each: segments, value 0..1, gap px, unused
-uniform vec3 u_trk;
-uniform vec4 u_rules[8];  // flat rectangles: x, y, w, h (layer px)
-uniform vec4 u_rcol[8];   // their colours (rgb)
-uniform vec4 u_logo;
+uniform vec4 u_bv[2];     // the six bar values 0..1
+uniform vec4 u_logo;      // x, y, w, h of the three slanted M stripes (w 0: none)
 uniform vec3 u_bg;
 uniform vec3 u_hex;
 uniform vec3 u_panel;
 uniform vec3 u_line;
 uniform vec3 u_glow;
 uniform vec3 u_blue;
+uniform vec3 u_trk;
 
 float segd(vec2 p, vec2 a, vec2 b) {
     vec2 pa = p - a, ba = b - a;
@@ -1620,66 +1653,22 @@ void main() {
     col += u_hex * line * (0.38 - 0.4 * dot(c, c));
 
     // the grey band behind the gear row, fading out at both ends
-    vec2 q = (p - u_band.xy) / u_band.zw;
+    vec2 q = (p - ${V2(bd[0] - ox, bd[1] - oy)}) / ${V2(bd[2], bd[3])};
     float bx = smoothstep(0.0, 0.12, q.x) * (1.0 - smoothstep(0.88, 1.0, q.x));
     float by = step(0.0, q.y) * step(q.y, 1.0);
     col = mix(col, vec3(0.30, 0.31, 0.33), 0.55 * bx * by * (0.7 + 0.3 * sin(q.x * 3.14159)));
 
-    // the rails
-    float rd = 1.0e4;
-    bool nearRail = (p.x >= u_rb[0].x && p.y >= u_rb[0].y && p.x <= u_rb[0].z && p.y <= u_rb[0].w)
-                 || (p.x >= u_rb[1].x && p.y >= u_rb[1].y && p.x <= u_rb[1].z && p.y <= u_rb[1].w);
-    if (nearRail) {
-        for (int i = 0; i < 40; i++) {
-            if (float(i) >= u_rn) break;
-            vec4 s = u_rs[i];
-            rd = min(rd, segd(p, s.xy, s.zw));
-        }
-    }
-    col += u_glow * 0.5 * exp(-rd * 0.30) * step(rd, 30.0);
+${rails}    col += u_glow * 0.5 * exp(-rd * 0.30) * step(rd, 30.0);
     col = mix(col, u_line, (1.0 - smoothstep(1.8, 3.4, rd)) * step(rd, 6.0));
 
-    // the glass panels
-    float ds[4];
-    ds[0] = poly0(p); ds[1] = poly1(p); ds[2] = poly2(p); ds[3] = poly3(p);
-    for (int i = 0; i < 4; i++) {
-        float d = ds[i];
-        if (u_n[i] < 3.0) continue;
-        float shade = 0.9 + 0.1 * sin(p.y * 0.04);
-        col += u_glow * 0.45 * exp(-max(d, 0.0) * 0.20) * step(0.0, d) * step(d, 30.0);
-        col = mix(col, u_panel * shade, 0.95 * (1.0 - smoothstep(-0.6, 0.8, d)));
-        float edge = 1.0 - smoothstep(1.4, 3.2, abs(d + 1.8));
-        col = mix(col, u_line, edge * step(d, 4.0));
-    }
-
-    // flat rules and stripes
-    for (int ri = 0; ri < 8; ri++) {
-        vec4 rr = u_rules[ri];
-        if (rr.z > 0.0 && p.x >= rr.x && p.x < rr.x + rr.z && p.y >= rr.y && p.y < rr.y + rr.w) col = u_rcol[ri].rgb;
-    }
-    // the readout bars (oil, intake, power, torque, fuel, coolant): segments lit up to the value, in this shader so the
-    // car draws no more effect layers than the theme's frame and arc
-    for (int bi = 0; bi < 6; bi++) {
-        vec4 bb = u_bars[bi];
-        vec4 bs = u_bs[bi];
-        if (bs.x > 0.0 && p.x >= bb.x && p.x < bb.x + bb.z && p.y >= bb.y && p.y < bb.y + bb.w) {
-            float slot = (bb.z + bs.z) / bs.x;
-            float x = p.x - bb.x;
-            float k = floor(x / slot);
-            float fx = x - k * slot;
-            float ba = clamp(fx + 0.5, 0.0, 1.0) * clamp(slot - bs.z - fx + 0.5, 0.0, 1.0);
-            if (k < bs.x && ba > 0.0) {
-                float lit = (bs.y > 0.0 && (k + 0.5) / bs.x <= bs.y + 0.5 / bs.x) ? 1.0 : 0.0;
-                col = mix(col, mix(u_trk, u_blue, lit), ba);
-            }
-        }
-    }
+${calls}
+${rules}${bars}
     // the dome
-    vec2 dq = (p - u_dome.xy) / u_dome.zw;
+    ${dm[2] > 0 ? `vec2 dq = (p - ${V2(dm[0] - ox, dm[1] - oy)}) / ${V2(dm[2], dm[3])};
     float inDome = (1.0 - smoothstep(0.96, 1.0, length(dq))) * step(dq.y, 0.0) * step(-1.0, dq.y);
-    col = mix(col, u_blue * (0.85 + 0.15 * step(0.0, dq.x)), inDome * step(0.0, u_dome.z));
+    col = mix(col, u_blue * (0.85 + 0.15 * step(0.0, dq.x)), inDome);` : ''}
     // the M stripes: light blue, dark blue, red, slanted to the right at the top
-    vec2 lq = (p - u_logo.xy) / u_logo.zw;
+    vec2 lq = (p - u_logo.xy) / max(u_logo.zw, vec2(1.0));
     if (u_logo.z > 0.0 && lq.y >= 0.0 && lq.y <= 1.0) {
         float sx = lq.x - (1.0 - lq.y) * 0.5;
         float a = smoothstep(-0.01, 0.01, sx) * (1.0 - smoothstep(0.21, 0.23, sx));
@@ -1693,7 +1682,7 @@ void main() {
 }
 `;
 }
-const LAMBO = lamboSource();
+const LAMBO = lamboBuild({}, null);
 
 // The Lambo theme's rev arc: wedge segments split by thin dark gaps, shaded from the inner to the outer edge. Up to the
 // rpm the blue to pale-blue run, then the grey segments, then the orange and red zones (always in colour, as on the
@@ -1904,4 +1893,4 @@ void main() {
 }
 `;
 
-module.exports = { chromedash: CHROMEDASH, chromedial: CHROMEDIAL, shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO, lamboarc: LAMBOARC };
+module.exports = { chromedash: CHROMEDASH, chromedial: CHROMEDIAL, shiftbar: SHIFTBAR, arc: ARC, revbar: REVBAR, lights: LIGHTS, fill: FILL, box: BOX, grid: GRID, segbar: SEGBAR, mdash: MDASH, mtach: MTACH, sdash: SDASH, boxes: BOXES, atext: ATEXT, dial: DIAL, meter: METER, gmeter: GMETER, revarc: REVARC, tiles: TILES, synth: SYNTH, lambo: LAMBO, lamboBuild: lamboBuild, lamboarc: LAMBOARC };
